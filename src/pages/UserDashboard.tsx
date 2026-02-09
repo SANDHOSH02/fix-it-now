@@ -23,52 +23,52 @@ const sidebarItems = [
 ];
 
 const stats = [
-  { label: "Total Reports", value: 12, icon: FileText, color: "bg-primary/10 text-primary" },
-  { label: "In Progress", value: 4, icon: Loader2, color: "bg-info/10 text-info" },
-  { label: "Resolved", value: 6, icon: CheckCircle2, color: "bg-success/10 text-success" },
-  { label: "Pending", value: 2, icon: AlertCircle, color: "bg-warning/10 text-warning" },
+  { label: "Total Reports", value: 0, icon: FileText, color: "bg-primary/10 text-primary" },
+  { label: "In Progress", value: 0, icon: Loader2, color: "bg-info/10 text-info" },
+  { label: "Resolved", value: 0, icon: CheckCircle2, color: "bg-success/10 text-success" },
+  { label: "Pending", value: 0, icon: AlertCircle, color: "bg-warning/10 text-warning" },
 ];
 
 const reports = [
   {
-    id: "RPT-1234",
+    id: "0",
     title: "Large pothole on Main Street",
     category: "Roads",
     status: "in-progress",
-    date: "2 hours ago",
-    location: "123 Main St",
+    date: "0 hours ago",
+    location: "0",
   },
   {
-    id: "RPT-1233",
+    id: "0",
     title: "Broken street light",
     category: "Lighting",
     status: "resolved",
-    date: "1 day ago",
-    location: "45 Oak Avenue",
+    date: "0 day ago",
+    location: "0",
   },
   {
-    id: "RPT-1232",
+    id: "0",
     title: "Garbage not collected",
     category: "Garbage",
     status: "reported",
-    date: "2 days ago",
-    location: "78 Park Road",
+    date: "0 days ago",
+    location: "0",
   },
   {
-    id: "RPT-1231",
+    id: "0",
     title: "Water leakage from pipe",
     category: "Water",
     status: "in-progress",
-    date: "3 days ago",
-    location: "12 River Lane",
+    date: "0 days ago",
+    location: "0",
   },
   {
-    id: "RPT-1230",
+    id: "0",
     title: "Drainage blocked",
     category: "Drainage",
     status: "resolved",
-    date: "5 days ago",
-    location: "99 Hill Street",
+    date: "0 days ago",
+    location: "0",
   },
 ];
 
@@ -106,8 +106,8 @@ export default function UserDashboard() {
               </div>
               {sidebarOpen && (
                 <div>
-                  <p className="font-medium text-sidebar-foreground">John Citizen</p>
-                  <p className="text-xs text-sidebar-foreground/60">john@email.com</p>
+                  <p className="font-medium text-sidebar-foreground">Abi</p>
+                  <p className="text-xs text-sidebar-foreground/60">abi@email.com</p>
                 </div>
               )}
             </div>

@@ -129,7 +129,7 @@ export default function ReportIssue() {
                       <div>
                         <p className="font-medium">Drag and drop or click to upload</p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          PNG, JPG up to 10MB
+                          PNG, JPG up to 0MB
                         </p>
                       </div>
                     </div>

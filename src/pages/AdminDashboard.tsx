@@ -45,66 +45,66 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const adminStats = [
-  { label: "Total Complaints", value: 1248, icon: AlertTriangle, change: "+12%", color: "text-primary" },
-  { label: "Pending Review", value: 89, icon: Clock, change: "-5%", color: "text-warning" },
-  { label: "Resolved Today", value: 34, icon: CheckCircle2, change: "+18%", color: "text-success" },
-  { label: "Active Citizens", value: 3421, icon: Users, change: "+8%", color: "text-info" },
+  { label: "Total Complaints", value: 0, icon: AlertTriangle, change: "0", color: "text-primary" },
+  { label: "Pending Review", value: 0, icon: Clock, change: "0", color: "text-warning" },
+  { label: "Resolved Today", value: 0, icon: CheckCircle2, change: "0", color: "text-success" },
+  { label: "Active Citizens", value: 0, icon: Users, change: "0", color: "text-info" },
 ];
 
 const complaints = [
   {
-    id: "CPL-5678",
+    id: "0",
     title: "Major road damage near school",
     category: "Roads",
-    location: "456 School Road",
-    reporter: "Jane Doe",
+    location: "0",
+    reporter: "0",
     priority: "high",
     status: "pending",
-    date: "2024-01-15",
+    date: "0",
     department: null,
   },
   {
-    id: "CPL-5677",
+    id: "0",
     title: "Water main leak",
     category: "Water",
-    location: "789 Water Lane",
-    reporter: "John Smith",
+    location: "0",
+    reporter: "0",
     priority: "high",
     status: "in-progress",
-    date: "2024-01-15",
+    date: "0",
     department: "Water Dept.",
   },
   {
-    id: "CPL-5676",
+    id: "0",
     title: "Street light outage",
     category: "Lighting",
-    location: "123 Dark Avenue",
-    reporter: "Bob Wilson",
+    location: "0",
+    reporter: "0",
     priority: "medium",
     status: "assigned",
-    date: "2024-01-14",
+    date: "0",
     department: "Electrical",
   },
   {
-    id: "CPL-5675",
+    id: "0",
     title: "Overflowing garbage bin",
     category: "Garbage",
-    location: "321 Trash Street",
-    reporter: "Alice Brown",
+    location: "0",
+    reporter: "0",
     priority: "low",
     status: "resolved",
-    date: "2024-01-14",
+    date: "0",
     department: "Sanitation",
   },
   {
-    id: "CPL-5674",
+    id: "0",
     title: "Blocked drainage",
     category: "Drainage",
-    location: "555 Flood Road",
-    reporter: "Charlie Green",
+    location: "0",
+    reporter: "0",
     priority: "medium",
     status: "in-progress",
-    date: "2024-01-13",
+    date: "0",
     department: "Public Works",
   },
 ];
@@ -297,15 +297,15 @@ export default function AdminDashboard() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">High density areas</span>
-                  <span className="font-medium text-destructive">5 zones</span>
+                  <span className="font-medium text-destructive">0 zones</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Medium density</span>
-                  <span className="font-medium text-warning">12 zones</span>
+                  <span className="font-medium text-warning">0 zones</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Low density</span>
-                  <span className="font-medium text-success">28 zones</span>
+                  <span className="font-medium text-success">0 zones</span>
                 </div>
               </div>
             </div>

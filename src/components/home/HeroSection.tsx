@@ -47,15 +47,15 @@ export function HeroSection() {
             {/* Stats */}
             <div className="flex flex-wrap justify-center lg:justify-start gap-8 pt-8">
               <div className="text-center lg:text-left">
-                <p className="text-3xl font-bold text-primary-foreground">12,500+</p>
+                <p className="text-3xl font-bold text-primary-foreground">0</p>
                 <p className="text-sm text-primary-foreground/70">Issues Reported</p>
               </div>
               <div className="text-center lg:text-left">
-                <p className="text-3xl font-bold text-primary-foreground">89%</p>
+                <p className="text-3xl font-bold text-primary-foreground">0</p>
                 <p className="text-sm text-primary-foreground/70">Resolution Rate</p>
               </div>
               <div className="text-center lg:text-left">
-                <p className="text-3xl font-bold text-primary-foreground">48hrs</p>
+                <p className="text-3xl font-bold text-primary-foreground">0</p>
                 <p className="text-sm text-primary-foreground/70">Avg Response Time</p>
               </div>
             </div>

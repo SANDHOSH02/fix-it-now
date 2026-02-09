@@ -58,7 +58,7 @@ export function Navbar() {
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
                 <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[10px] font-medium text-accent-foreground flex items-center justify-center">
-                  3
+                  0
                 </span>
               </Button>
             </DropdownMenuTrigger>
@@ -68,7 +68,7 @@ export function Navbar() {
               </div>
               <div className="p-2">
                 <DropdownMenuItem className="flex flex-col items-start gap-1 p-3 cursor-pointer">
-                  <span className="text-sm font-medium">Report #1234 Updated</span>
+                  <span className="text-sm font-medium">Report #0 Updated</span>
                   <span className="text-xs text-muted-foreground">Your pothole report is now in progress</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="flex flex-col items-start gap-1 p-3 cursor-pointer">

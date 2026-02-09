@@ -21,11 +21,11 @@ const categories = [
 ];
 
 const mockMarkers = [
-  { id: 1, category: "roads", title: "Pothole", location: "Main St", status: "pending" },
-  { id: 2, category: "lighting", title: "Broken light", location: "Oak Ave", status: "resolved" },
-  { id: 3, category: "water", title: "Leak", location: "River Rd", status: "in-progress" },
-  { id: 4, category: "garbage", title: "Overflow", location: "Park Blvd", status: "pending" },
-  { id: 5, category: "roads", title: "Crack", location: "Hill St", status: "in-progress" },
+  { id: 1, category: "roads", title: "Pothole", location: "Anna Salai, Chennai", status: "pending" },
+  { id: 2, category: "lighting", title: "Broken light", location: "Gandhipuram, Coimbatore", status: "resolved" },
+  { id: 3, category: "water", title: "Leak", location: "Meenakshi Amman St, Madurai", status: "in-progress" },
+  { id: 4, category: "garbage", title: "Overflow", location: "MG Road, Salem", status: "pending" },
+  { id: 5, category: "roads", title: "Crack", location: "Beach Road, Rameswaram", status: "in-progress" },
 ];
 
 export default function MapView() {
@@ -60,7 +60,7 @@ export default function MapView() {
 
           {/* Cluster indicator */}
           <div className="absolute top-1/2 right-1/3 h-10 w-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold shadow-elevated">
-            12
+            0
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export default function MapView() {
           <div className="card-civic max-h-64 overflow-auto">
             <div className="flex items-center justify-between mb-3">
               <span className="font-medium text-sm">Nearby Issues</span>
-              <Badge variant="secondary">{mockMarkers.length}</Badge>
+              <Badge variant="secondary">0</Badge>
             </div>
             <div className="space-y-2">
               {mockMarkers.map((marker) => (
