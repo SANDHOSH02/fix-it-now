@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { aiPipelineSteps, tnDistricts } from "@/lib/mockData";
+import { useSubmitComplaint } from "@/hooks/useComplaints";
 
 //  Zod schema 
 const schema = z.object({
@@ -75,10 +76,11 @@ function simulateAI(values: FormValues): Promise<AiResult> {
   });
 }
 
-// 
+//
 export default function ReportIssue() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const submitComplaint = useSubmitComplaint();
   const [image, setImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -128,7 +130,7 @@ export default function ReportIssue() {
     );
   };
 
-  //  AI pipeline runner 
+  //  AI pipeline runner (visual simulation + real API call in parallel)
   async function runAIPipeline(values: FormValues) {
     setIsSubmitting(true);
     setAiStep(0);
@@ -137,7 +139,23 @@ export default function ReportIssue() {
       setTimeout(() => setAiStep(i), elapsed);
       elapsed += aiPipelineSteps[i].duration;
     }
-    const result = await simulateAI(values);
+
+    // Run visual simulation and real API call concurrently
+    const [result] = await Promise.all([
+      simulateAI(values),
+      submitComplaint.mutateAsync({
+        title: values.title,
+        category: values.category,
+        description: values.description,
+        lat: geoCoords?.lat ?? 13.0827,
+        lng: geoCoords?.lng ?? 80.2707,
+        address: values.address,
+        city: values.district,
+        district: values.district,
+        photoUrl: image ?? undefined,
+      }).catch(() => null), // gracefully ignore API errors (backend may not be running)
+    ]);
+
     setAiResult(result);
     setAiStep(aiPipelineSteps.length); // done
     setTimeout(() => {

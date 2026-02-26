@@ -24,10 +24,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { complaints, getComplaintsForUser } from "@/lib/mockData";
-
-const CURRENT_USER_ID = "USR-001"; // Arjun Ravi
-const CURRENT_USER = { name: "Arjun Ravi", email: "arjun@example.com", district: "Chennai" };
+import { useAuth } from "@/contexts/AuthContext";
+import { useMyComplaints } from "@/hooks/useComplaints";
+import { complaints as mockComplaints, getComplaintsForUser } from "@/lib/mockData";
+import type { ApiComplaintDetail } from "@/lib/api";
 
 const sidebarItems = [
   { icon: FileText, label: "My Reports",     path: "/dashboard" },
@@ -50,14 +50,61 @@ const priorityClass: Record<string, string> = {
   low:    "bg-green-100 text-green-700",
 };
 
+// Shape that works for both API and mock data
+type ReportItem = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  category: string;
+  date?: string;
+  location: { city: string; district: string; address: string };
+  description: string;
+  department?: string | null;
+  aiConfidence?: number;
+  statusHistory: { status: string; date?: string; note?: string; createdAt?: string }[];
+};
+
+function apiToReportItem(c: ApiComplaintDetail): ReportItem {
+  return {
+    id: c.refId ?? c.id,
+    title: c.title,
+    status: c.status,
+    priority: c.priority,
+    category: c.category,
+    date: new Date(c.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+    location: { city: c.city, district: c.district, address: c.address },
+    description: c.description,
+    department: c.department?.name ?? null,
+    aiConfidence: c.aiConfidence,
+    statusHistory: c.statusHistory.map((h) => ({
+      status: h.status,
+      date: new Date(h.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+      note: h.note ?? "",
+    })),
+  };
+}
+
 export default function UserDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "reported" | "pending" | "assigned" | "in-progress" | "resolved">("all");
-  const [selectedReport, setSelectedReport] = useState<typeof myReports[0] | null>(null);
+  const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
 
-  const myReports = getComplaintsForUser(CURRENT_USER_ID);
-  const allTNComplaints = complaints;
+  const { data: apiData, isLoading: apiLoading } = useMyComplaints();
+
+  // Use API data if available, otherwise fall back to mock data for the demo user
+  const fallbackUser = { name: "Arjun Ravi", email: "arjun@example.com", district: "Chennai" };
+  const displayUser = user
+    ? { name: user.name, email: user.email, district: user.district ?? "Tamil Nadu" }
+    : fallbackUser;
+
+  const myReports: ReportItem[] = apiData?.data
+    ? apiData.data.map(apiToReportItem)
+    : getComplaintsForUser("USR-001");
+
+  const allTNComplaints = mockComplaints;
 
   const stats = [
     { label: "Total Reports",  value: myReports.length,                                       icon: FileText,     color: "bg-primary/10 text-primary" },
@@ -71,6 +118,17 @@ export default function UserDashboard() {
     : myReports.filter((r) => r.status === activeTab);
 
   const tabs = ["all", "reported", "pending", "assigned", "in-progress", "resolved"] as const;
+
+  if (apiLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-muted/30">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -86,9 +144,9 @@ export default function UserDashboard() {
               </div>
               {sidebarOpen && (
                 <div className="overflow-hidden">
-                  <p className="font-semibold text-sm truncate">{CURRENT_USER.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{CURRENT_USER.email}</p>
-                  <p className="text-xs text-muted-foreground truncate">{CURRENT_USER.district}, TN</p>
+                  <p className="font-semibold text-sm truncate">{displayUser.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{displayUser.email}</p>
+                  <p className="text-xs text-muted-foreground truncate">{displayUser.district}, TN</p>
                 </div>
               )}
             </div>
@@ -126,7 +184,7 @@ export default function UserDashboard() {
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-bold">My Dashboard</h1>
-                <p className="text-muted-foreground text-sm">Welcome back, {CURRENT_USER.name.split(" ")[0]}  — {CURRENT_USER.district} District, Tamil Nadu</p>
+                <p className="text-muted-foreground text-sm">Welcome back, {displayUser.name.split(" ")[0]} — {displayUser.district} District, Tamil Nadu</p>
               </div>
               <Button onClick={() => navigate("/report")} className="gap-2 hidden sm:flex">
                 <Plus className="h-4 w-4" /> Report Issue

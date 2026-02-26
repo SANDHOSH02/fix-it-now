@@ -1,31 +1,16 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Bell, Menu, User, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Bell, Menu, User, X, LogOut, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getComplaintsForUser } from "@/lib/mockData";
-
-const CURRENT_USER_ID = "USR-001";
-
-// Build notifications from the current user's most recent status history entries
-const userComplaints = getComplaintsForUser(CURRENT_USER_ID);
-const notifications = userComplaints
-  .flatMap((c) =>
-    c.statusHistory.map((h) => ({
-      id: `${c.id}-${h.status}`,
-      reportId: c.id,
-      title: `${c.id} — ${h.status.charAt(0).toUpperCase() + h.status.slice(1)}`,
-      body: h.note,
-      date: h.date,
-    }))
-  )
-  .reverse()
-  .slice(0, 5);
+import { useAuth } from "@/contexts/AuthContext";
+import { useLogoutMutation } from "@/hooks/useAuth";
 
 const navLinks = [
   { name: "Home", path: "/" },
@@ -37,6 +22,15 @@ const navLinks = [
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, isAdmin } = useAuth();
+  const logout = useLogoutMutation();
+
+  const handleLogout = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => navigate("/"),
+    });
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -70,61 +64,63 @@ export function Navbar() {
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
-          {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {notifications.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[10px] font-medium text-accent-foreground flex items-center justify-center">
-                    {notifications.length}
-                  </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 bg-card">
-              <div className="p-3 border-b border-border flex items-center justify-between">
-                <h4 className="font-semibold">Notifications</h4>
-                <span className="text-xs text-muted-foreground">{notifications.length} updates</span>
-              </div>
-              <div className="p-2 max-h-72 overflow-auto">
-                {notifications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground p-3">No notifications</p>
-                ) : (
-                  notifications.map((n) => (
-                    <DropdownMenuItem key={n.id} asChild>
-                      <Link to="/dashboard" className="flex flex-col items-start gap-0.5 p-3 cursor-pointer">
-                        <span className="text-sm font-medium">{n.title}</span>
-                        <span className="text-xs text-muted-foreground">{n.body}</span>
-                        <span className="text-[10px] text-muted-foreground/60">{n.date}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary" />
+          {/* Notifications (only when logged in) */}
+          {isAuthenticated && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 bg-card">
+                <div className="p-3 border-b border-border flex items-center justify-between">
+                  <h4 className="font-semibold">Notifications</h4>
                 </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-card">
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard">My Dashboard</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/admin">Admin Panel</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Sign Out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <div className="p-2">
+                  <p className="text-sm text-muted-foreground p-3">No new notifications</p>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* User Menu / Auth Buttons */}
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card min-w-44">
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-sm font-medium truncate">{user?.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                </div>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard">My Dashboard</Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">Admin Panel</Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive gap-2"
+                  onClick={handleLogout}
+                  disabled={logout.isPending}
+                >
+                  <LogOut className="h-4 w-4" /> Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button size="sm" asChild className="gap-2 hidden md:inline-flex">
+              <Link to="/login"><LogIn className="h-4 w-4" /> Sign In</Link>
+            </Button>
+          )}
 
           {/* Mobile Menu Button */}
           <Button
