@@ -63,6 +63,8 @@ head "Pages"
 # Format: "route | ComponentFile | requiresAuth"
 pages=(
   "/            | src/pages/Index.tsx           | public"
+  "/login       | src/pages/Login.tsx           | public"
+  "/register    | src/pages/Register.tsx        | public"
   "/report      | src/pages/ReportIssue.tsx     | public"
   "/dashboard   | src/pages/UserDashboard.tsx   | auth:citizen"
   "/admin       | src/pages/AdminDashboard.tsx  | auth:admin"
@@ -173,7 +175,7 @@ head "Milestones"
 # Format: "ID | Name | Status | Target"
 milestones=(
   "M1 | UI Scaffold       | complete    | —"
-  "M2 | Auth              | in-progress | Q1 2026"
+  "M2 | Auth              | complete    | Q1 2026"
   "M3 | Backend API       | in-progress | Q1 2026"
   "M4 | AI Pipeline       | pending     | Q2 2026"
   "M5 | Map Integration   | pending     | Q2 2026"
@@ -317,8 +319,8 @@ head "Summary"
 
 total_pages=${#pages[@]}
 total_milestones=${#milestones[@]}
-completed_milestones=1    # M1 only
-inprogress_milestones=2   # M2 Auth + M3 Backend API
+completed_milestones=2    # M1 UI + M2 Auth (code-complete)
+inprogress_milestones=1   # M3 Backend API (server code written, needs deployment)
 pending_milestones=$((total_milestones - completed_milestones - inprogress_milestones))
 total_frs=${#features[@]}
 ui_frs=${#ui_complete_frs[@]}
@@ -329,7 +331,7 @@ echo -e "  Milestones     ${GREEN}$completed_milestones complete${RESET}  /  ${C
 echo -e "  Feature Reqs   ${GREEN}$ui_frs UI done${RESET}  /  ${YELLOW}$backend_frs need backend${RESET}  /  $total_frs total"
 echo -e "  Database       ${CYAN}PostgreSQL 16 + PostGIS${RESET}  (planned)"
 echo ""
-echo -e "  ${BOLD}Next step:${RESET}  ${YELLOW}M2 Auth${RESET} + ${YELLOW}M3 Backend API${RESET}  →  Q1 2026"
+echo -e "  ${BOLD}Next step:  M3 Backend API  →  deploy PostgreSQL + run `npm install` in server/  →  Q1 2026"
 echo ""
 echo -e "${DIM}  Ralph loop complete. Edit ralph/ docs to update this report.${RESET}"
 echo ""
