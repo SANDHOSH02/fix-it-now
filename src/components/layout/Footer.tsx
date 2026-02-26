@@ -76,7 +76,7 @@ export function Footer() {
 
         <div className="mt-12 pt-6 border-t border-border">
           <p className="text-center text-sm text-muted-foreground">
-            © 0 FIXITNOW. All rights reserved. Building smarter cities through citizen engagement.
+            © {new Date().getFullYear()} FIXITNOW. All rights reserved. Building smarter cities through citizen engagement.
           </p>
         </div>
       </div>

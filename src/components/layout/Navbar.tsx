@@ -8,6 +8,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getComplaintsForUser } from "@/lib/mockData";
+
+const CURRENT_USER_ID = "USR-001";
+
+// Build notifications from the current user's most recent status history entries
+const userComplaints = getComplaintsForUser(CURRENT_USER_ID);
+const notifications = userComplaints
+  .flatMap((c) =>
+    c.statusHistory.map((h) => ({
+      id: `${c.id}-${h.status}`,
+      reportId: c.id,
+      title: `${c.id} — ${h.status.charAt(0).toUpperCase() + h.status.slice(1)}`,
+      body: h.note,
+      date: h.date,
+    }))
+  )
+  .reverse()
+  .slice(0, 5);
 
 const navLinks = [
   { name: "Home", path: "/" },
@@ -57,24 +75,32 @@ export function Navbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
-                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[10px] font-medium text-accent-foreground flex items-center justify-center">
-                  0
-                </span>
+                {notifications.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[10px] font-medium text-accent-foreground flex items-center justify-center">
+                    {notifications.length}
+                  </span>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 bg-card">
-              <div className="p-3 border-b border-border">
+              <div className="p-3 border-b border-border flex items-center justify-between">
                 <h4 className="font-semibold">Notifications</h4>
+                <span className="text-xs text-muted-foreground">{notifications.length} updates</span>
               </div>
-              <div className="p-2">
-                <DropdownMenuItem className="flex flex-col items-start gap-1 p-3 cursor-pointer">
-                  <span className="text-sm font-medium">Report #0 Updated</span>
-                  <span className="text-xs text-muted-foreground">Your pothole report is now in progress</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start gap-1 p-3 cursor-pointer">
-                  <span className="text-sm font-medium">Issue Resolved</span>
-                  <span className="text-xs text-muted-foreground">Street light fixed at Main St.</span>
-                </DropdownMenuItem>
+              <div className="p-2 max-h-72 overflow-auto">
+                {notifications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-3">No notifications</p>
+                ) : (
+                  notifications.map((n) => (
+                    <DropdownMenuItem key={n.id} asChild>
+                      <Link to="/dashboard" className="flex flex-col items-start gap-0.5 p-3 cursor-pointer">
+                        <span className="text-sm font-medium">{n.title}</span>
+                        <span className="text-xs text-muted-foreground">{n.body}</span>
+                        <span className="text-[10px] text-muted-foreground/60">{n.date}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
+                )}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>

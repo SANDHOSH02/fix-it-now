@@ -116,6 +116,7 @@ export default function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterDept, setFilterDept] = useState("all");
   const [activeTab, setActiveTab] = useState<"table" | "analytics">("table");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, typeof complaints[0]["status"]>>({});
   const [deptOverrides, setDeptOverrides] = useState<Record<string, string>>({});
@@ -135,7 +136,8 @@ export default function AdminDashboard() {
     const matchesStatus   = filterStatus   === "all" || c.status   === filterStatus;
     const matchesPriority = filterPriority === "all" || c.priority === filterPriority;
     const matchesCategory = filterCategory === "all" || c.category === filterCategory;
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
+    const matchesDept     = filterDept     === "all" || c.department === filterDept || (filterDept === "unassigned" && !c.department);
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesDept;
   });
 
   return (
@@ -242,6 +244,18 @@ export default function AdminDashboard() {
                     <SelectItem value="lighting">Lighting</SelectItem>
                     <SelectItem value="drainage">Drainage</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterDept} onValueChange={setFilterDept}>
+                  <SelectTrigger className="w-40 bg-background">
+                    <SelectValue placeholder="Department" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card">
+                    <SelectItem value="all">All Departments</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Badge variant="secondary" className="self-center">{filtered.length} results</Badge>
