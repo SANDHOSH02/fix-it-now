@@ -172,14 +172,14 @@ head "Milestones"
 
 # Format: "ID | Name | Status | Target"
 milestones=(
-  "M1 | UI Scaffold       | complete | —"
-  "M2 | Auth              | pending  | Q1 2026"
-  "M3 | Backend API       | pending  | Q1 2026"
-  "M4 | AI Pipeline       | pending  | Q2 2026"
-  "M5 | Map Integration   | pending  | Q2 2026"
-  "M6 | Real-time         | pending  | Q3 2026"
-  "M7 | Analytics         | pending  | Q3 2026"
-  "M8 | Launch            | pending  | Q4 2026"
+  "M1 | UI Scaffold       | complete    | —"
+  "M2 | Auth              | in-progress | Q1 2026"
+  "M3 | Backend API       | in-progress | Q1 2026"
+  "M4 | AI Pipeline       | pending     | Q2 2026"
+  "M5 | Map Integration   | pending     | Q2 2026"
+  "M6 | Real-time         | pending     | Q3 2026"
+  "M7 | Analytics         | pending     | Q3 2026"
+  "M8 | Launch            | pending     | Q4 2026"
 )
 
 for ms in "${milestones[@]}"; do
@@ -191,6 +191,8 @@ for ms in "${milestones[@]}"; do
 
   if [[ "$status" == "complete" ]]; then
     echo -e "  ${GREEN}✔${RESET}  ${BOLD}$id${RESET}  $name  ${DIM}$target${RESET}"
+  elif [[ "$status" == "in-progress" ]]; then
+    echo -e "  ${CYAN}▶${RESET}  ${BOLD}$id${RESET}  $name  ${DIM}$target${RESET}  ${CYAN}[in-progress]${RESET}"
   else
     echo -e "  ${YELLOW}○${RESET}  ${BOLD}$id${RESET}  $name  ${DIM}$target${RESET}"
   fi
@@ -315,14 +317,15 @@ head "Summary"
 
 total_pages=${#pages[@]}
 total_milestones=${#milestones[@]}
-completed_milestones=1   # M1 only
-pending_milestones=$((total_milestones - completed_milestones))
+completed_milestones=1    # M1 only
+inprogress_milestones=2   # M2 Auth + M3 Backend API
+pending_milestones=$((total_milestones - completed_milestones - inprogress_milestones))
 total_frs=${#features[@]}
 ui_frs=${#ui_complete_frs[@]}
 backend_frs=$((total_frs - ui_frs))
 
 echo -e "  Pages          ${BOLD}$total_pages / $total_pages${RESET}  files present"
-echo -e "  Milestones     ${GREEN}$completed_milestones complete${RESET}  /  ${YELLOW}$pending_milestones pending${RESET}  /  $total_milestones total"
+echo -e "  Milestones     ${GREEN}$completed_milestones complete${RESET}  /  ${CYAN}$inprogress_milestones in-progress${RESET}  /  ${YELLOW}$pending_milestones pending${RESET}  /  $total_milestones total"
 echo -e "  Feature Reqs   ${GREEN}$ui_frs UI done${RESET}  /  ${YELLOW}$backend_frs need backend${RESET}  /  $total_frs total"
 echo -e "  Database       ${CYAN}PostgreSQL 16 + PostGIS${RESET}  (planned)"
 echo ""

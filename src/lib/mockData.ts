@@ -509,6 +509,7 @@ export const complaints: Complaint[] = [
     upvotes: 8,
     statusHistory: [
       { status: "reported", date: "Feb 22, 2026", note: "Complaint received" },
+      { status: "pending", date: "Feb 22, 2026", note: "Awaiting department review" },
     ],
   },
   {
@@ -616,6 +617,7 @@ export const complaints: Complaint[] = [
     upvotes: 19,
     statusHistory: [
       { status: "reported", date: "Feb 25, 2026", note: "Complaint received" },
+      { status: "pending", date: "Feb 25, 2026", note: "Awaiting field inspection" },
     ],
   },
   {

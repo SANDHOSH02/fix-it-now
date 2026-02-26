@@ -1,0 +1,203 @@
+// ─── Fix It Now — Prisma Schema ───────────────────────────────────────────────
+// PostgreSQL 16 + PostGIS
+// Run: prisma migrate dev --name init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pgcrypto, unaccent]
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  CITIZEN
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ComplaintStatus {
+  reported
+  pending
+  assigned
+  in_progress @map("in-progress")
+  resolved
+}
+
+enum ComplaintCategory {
+  roads
+  water
+  garbage
+  lighting
+  drainage
+  other
+}
+
+enum Priority {
+  low
+  medium
+  high
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(CITIZEN)
+  district      String?
+  phone         String?
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  complaints    Complaint[]       @relation("Reporter")
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// ─── Refresh Tokens ───────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token     String   @unique
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Departments ──────────────────────────────────────────────────────────────
+
+model Department {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String      @unique
+  description String?
+  contactEmail String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  complaints  Complaint[]
+
+  @@map("departments")
+}
+
+// ─── Complaints ───────────────────────────────────────────────────────────────
+// NOTE: The `location` column is a PostGIS POINT geometry.
+// Prisma does not natively support geometry types, so we use `Unsupported`
+// and handle spatial queries with $queryRaw.
+
+model Complaint {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  refId         String            @unique  // e.g. FIX-2026-001
+  title         String
+  category      ComplaintCategory
+  description   String
+  status        ComplaintStatus   @default(reported)
+  priority      Priority          @default(medium)
+
+  // PostGIS POINT geometry — managed via raw SQL in migrations
+  // lat/lng stored as plain floats for Prisma access; PostGIS column added in migration
+  lat           Float
+  lng           Float
+  address       String
+  city          String
+  district      String
+
+  photoUrl      String?
+  voiceNoteUrl  String?
+
+  aiConfidence  Int               @default(0)
+  isDuplicate   Boolean           @default(false)
+  duplicateOfId String?           @db.Uuid
+  upvotes       Int               @default(0)
+
+  reporterId    String            @db.Uuid
+  reporter      User              @relation("Reporter", fields: [reporterId], references: [id])
+
+  departmentId  String?           @db.Uuid
+  department    Department?       @relation(fields: [departmentId], references: [id])
+
+  statusHistory StatusHistory[]
+  auditLogs     AuditLog[]
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // Full-text search: populated by trigger in SQL migration
+  searchVector  Unsupported("tsvector")?
+
+  @@index([reporterId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("complaints")
+}
+
+// ─── Status History ───────────────────────────────────────────────────────────
+
+model StatusHistory {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  complaintId String          @db.Uuid
+  complaint   Complaint       @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  status      ComplaintStatus
+  note        String?
+  changedById String?         @db.Uuid
+  createdAt   DateTime        @default(now())
+
+  @@index([complaintId])
+  @@map("status_history")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  body        String
+  isRead      Boolean  @default(false)
+  type        String   @default("status_update")
+  refId       String?  // complaint ref ID
+  createdAt   DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  action      String
+  entity      String
+  entityId    String
+  userId      String?   @db.Uuid
+  user        User?     @relation(fields: [userId], references: [id])
+  complaintId String?   @db.Uuid
+  complaint   Complaint? @relation(fields: [complaintId], references: [id])
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
