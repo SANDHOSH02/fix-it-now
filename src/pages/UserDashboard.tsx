@@ -92,7 +92,7 @@ export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState<"all" | "reported" | "pending" | "assigned" | "in-progress" | "resolved">("all");
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
 
-  const { data: apiData, isLoading: apiLoading } = useMyComplaints();
+  const { data: apiData, isLoading: apiLoading, isError: apiError } = useMyComplaints();
 
   // Use API data if available, otherwise fall back to mock data for the demo user
   const fallbackUser = { name: "Arjun Ravi", email: "arjun@example.com", district: "Chennai" };
@@ -119,7 +119,8 @@ export default function UserDashboard() {
 
   const tabs = ["all", "reported", "pending", "assigned", "in-progress", "resolved"] as const;
 
-  if (apiLoading) {
+  // Only show the full-page spinner when genuinely loading (not on error — fallback to mock)
+  if (apiLoading && !apiError) {
     return (
       <div className="min-h-screen flex flex-col bg-muted/30">
         <Navbar />

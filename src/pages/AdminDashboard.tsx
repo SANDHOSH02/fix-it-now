@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   Filter,
@@ -23,7 +23,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from "recharts";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -56,46 +55,71 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { complaints, departments } from "@/lib/mockData";
+import { useComplaints, useUpdateComplaintStatus, useAssignDepartment } from "@/hooks/useComplaints";
+import { useDepartments } from "@/hooks/useDepartments";
+import { complaints as mockComplaints, departments as mockDepts } from "@/lib/mockData";
+import type { ApiComplaint } from "@/lib/api";
 
-//  Derived stats 
-const totalComplaints = complaints.length;
-const pendingReview   = complaints.filter((c) => c.status === "pending" || c.status === "reported").length;
-const resolvedToday   = complaints.filter((c) => c.status === "resolved" && c.date.includes("Feb 2")).length;
-const activeCitizens  = new Set(complaints.map((c) => c.reporter.userId)).size;
-const avgAiScore      = Math.round(complaints.reduce((a, c) => a + c.aiConfidence, 0) / complaints.length);
+// ─── Normalised complaint shape ───────────────────────────────────────────────
+type AdminComplaint = {
+  _apiId:       string;
+  id:           string;
+  title:        string;
+  category:     string;
+  status:       string;
+  priority:     string;
+  city:         string;
+  district:     string;
+  reporterName: string;
+  aiConfidence: number;
+  department:   string | null;
+  isDuplicate:  boolean;
+  upvotes:      number;
+  date:         string;
+  description:  string;
+};
 
-const adminStats = [
-  { label: "Total Complaints", value: totalComplaints, icon: AlertTriangle, change: "+5",  color: "text-primary" },
-  { label: "Pending Review",   value: pendingReview,   icon: Clock,         change: "+3",  color: "text-yellow-600" },
-  { label: "Resolved",         value: resolvedToday,   icon: CheckCircle2,  change: "+2",  color: "text-green-600" },
-  { label: "Active Citizens",  value: activeCitizens,  icon: Users,         change: `+${activeCitizens}`, color: "text-sky-600" },
-];
+function fromApi(c: ApiComplaint): AdminComplaint {
+  return {
+    _apiId:       c.id,
+    id:           c.refId ?? c.id,
+    title:        c.title,
+    category:     c.category,
+    status:       c.status,
+    priority:     c.priority,
+    city:         c.city,
+    district:     c.district,
+    reporterName: c.reporter.name,
+    aiConfidence: c.aiConfidence,
+    department:   c.department?.name ?? null,
+    isDuplicate:  c.isDuplicate,
+    upvotes:      c.upvotes,
+    date:         new Date(c.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+    description:  "",
+  };
+}
 
-//  Chart data 
-const categoryCount = (cat: string) => complaints.filter((c) => c.category === cat).length;
-const barData = [
-  { name: "Roads",    count: categoryCount("roads") },
-  { name: "Water",    count: categoryCount("water") },
-  { name: "Garbage",  count: categoryCount("garbage") },
-  { name: "Lighting", count: categoryCount("lighting") },
-  { name: "Drainage", count: categoryCount("drainage") },
-  { name: "Other",    count: categoryCount("other") },
-];
-const pieData = [
-  { name: "Resolved",    value: complaints.filter((c) => c.status === "resolved").length,    color: "#22c55e" },
-  { name: "In Progress", value: complaints.filter((c) => c.status === "in-progress").length, color: "#0ea5e9" },
-  { name: "Assigned",    value: complaints.filter((c) => c.status === "assigned").length,    color: "#3b82f6" },
-  { name: "Pending",     value: complaints.filter((c) => c.status === "pending").length,     color: "#f59e0b" },
-  { name: "Reported",    value: complaints.filter((c) => c.status === "reported").length,    color: "#9ca3af" },
-];
+function fromMock(c: typeof mockComplaints[0]): AdminComplaint {
+  return {
+    _apiId:       c.id,
+    id:           c.id,
+    title:        c.title,
+    category:     c.category,
+    status:       c.status,
+    priority:     c.priority,
+    city:         c.location.city,
+    district:     c.location.district,
+    reporterName: c.reporter.name,
+    aiConfidence: c.aiConfidence,
+    department:   c.department ?? null,
+    isDuplicate:  c.isDuplicate,
+    upvotes:      c.upvotes,
+    date:         c.date,
+    description:  c.description,
+  };
+}
 
-//  City wise volume for horizontal bar 
-const cityCount: Record<string, number> = {};
-complaints.forEach((c) => { cityCount[c.location.city] = (cityCount[c.location.city] ?? 0) + 1; });
-const cityData = Object.entries(cityCount).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([city, count]) => ({ city, count }));
-
-//  Badge helpers 
+// ─── Badge helpers ────────────────────────────────────────────────────────────
 const priorityCls: Record<string, string> = {
   high:   "bg-red-100 text-red-700",
   medium: "bg-yellow-100 text-yellow-700",
@@ -109,36 +133,118 @@ const statusCls: Record<string, string> = {
   resolved:      "bg-green-100 text-green-700",
 };
 
-// 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const [selectedComplaint, setSelectedComplaint] = useState<typeof complaints[0] | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterDept, setFilterDept] = useState("all");
-  const [activeTab, setActiveTab] = useState<"table" | "analytics">("table");
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, typeof complaints[0]["status"]>>({});
-  const [deptOverrides, setDeptOverrides] = useState<Record<string, string>>({});
-  const [assignDeptValue, setAssignDeptValue] = useState<string>("");
+  // ── API hooks ──
+  const { data: complaintsData } = useComplaints();
+  const { data: deptsData }      = useDepartments();
+  const updateStatus             = useUpdateComplaintStatus();
+  const assignDept               = useAssignDepartment();
 
-  const allComplaints = complaints.map((c) => ({
-    ...c,
-    status: statusOverrides[c.id] ?? c.status,
-    department: deptOverrides[c.id] !== undefined ? deptOverrides[c.id] : c.department,
-  }));
+  // ── Data source: API when available, mockData otherwise ──
+  const baseComplaints: AdminComplaint[] = useMemo(
+    () => complaintsData?.data
+      ? complaintsData.data.map(fromApi)
+      : mockComplaints.map(fromMock),
+    [complaintsData],
+  );
 
-  const filtered = allComplaints.filter((c) => {
-    const matchesSearch =
-      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.location.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.reporter.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus   = filterStatus   === "all" || c.status   === filterStatus;
-    const matchesPriority = filterPriority === "all" || c.priority === filterPriority;
-    const matchesCategory = filterCategory === "all" || c.category === filterCategory;
-    const matchesDept     = filterDept     === "all" || c.department === filterDept || (filterDept === "unassigned" && !c.department);
-    return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesDept;
-  });
+  const deptList: string[] = useMemo(
+    () => deptsData?.data
+      ? deptsData.data.map((d) => d.name)
+      : mockDepts,
+    [deptsData],
+  );
+
+  // ── Local optimistic overrides ──
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
+  const [deptOverrides,   setDeptOverrides]   = useState<Record<string, string>>({});
+
+  const allComplaints: AdminComplaint[] = useMemo(
+    () => baseComplaints.map((c) => ({
+      ...c,
+      status:     statusOverrides[c.id] ?? c.status,
+      department: deptOverrides[c.id]   !== undefined ? deptOverrides[c.id] : c.department,
+    })),
+    [baseComplaints, statusOverrides, deptOverrides],
+  );
+
+  // ── Mutation wrappers: optimistic + API ──
+  const handleSetStatus = (c: AdminComplaint, status: string) => {
+    setStatusOverrides((prev) => ({ ...prev, [c.id]: status }));
+    updateStatus.mutate({ id: c._apiId, status }, { onError: () => { /* optimistic already applied */ } });
+  };
+
+  const handleAssignDept = (c: AdminComplaint, deptName: string) => {
+    setDeptOverrides((prev) => ({ ...prev, [c.id]: deptName }));
+    // find dept id from API data if available
+    const deptId = deptsData?.data?.find((d) => d.name === deptName)?.id ?? deptName;
+    assignDept.mutate({ id: c._apiId, departmentId: deptId }, { onError: () => { /* optimistic already applied */ } });
+  };
+
+  // ── Filters ──
+  const [selectedComplaint, setSelectedComplaint] = useState<AdminComplaint | null>(null);
+  const [assignDeptValue,   setAssignDeptValue]   = useState<string>("");
+  const [searchQuery,       setSearchQuery]       = useState("");
+  const [filterStatus,      setFilterStatus]      = useState("all");
+  const [filterPriority,    setFilterPriority]    = useState("all");
+  const [filterCategory,    setFilterCategory]    = useState("all");
+  const [filterDept,        setFilterDept]        = useState("all");
+  const [activeTab,         setActiveTab]         = useState<"table" | "analytics">("table");
+
+  const filtered = useMemo(
+    () => allComplaints.filter((c) => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        c.title.toLowerCase().includes(q) ||
+        c.city.toLowerCase().includes(q) ||
+        c.reporterName.toLowerCase().includes(q);
+      const matchesStatus   = filterStatus   === "all" || c.status   === filterStatus;
+      const matchesPriority = filterPriority === "all" || c.priority === filterPriority;
+      const matchesCategory = filterCategory === "all" || c.category === filterCategory;
+      const matchesDept     =
+        filterDept === "all" ||
+        c.department === filterDept ||
+        (filterDept === "unassigned" && !c.department);
+      return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesDept;
+    }),
+    [allComplaints, searchQuery, filterStatus, filterPriority, filterCategory, filterDept],
+  );
+
+  // ── Derived stats ──
+  const totalComplaints = allComplaints.length;
+  const pendingReview   = allComplaints.filter((c) => c.status === "pending" || c.status === "reported").length;
+  const resolved        = allComplaints.filter((c) => c.status === "resolved").length;
+  const activeCitizens  = new Set(mockComplaints.map((c) => c.reporter.userId)).size;
+  const avgAiScore      = Math.round(allComplaints.reduce((a, c) => a + c.aiConfidence, 0) / (allComplaints.length || 1));
+
+  const adminStats = [
+    { label: "Total Complaints", value: totalComplaints, icon: AlertTriangle, change: "+5",  color: "text-primary" },
+    { label: "Pending Review",   value: pendingReview,   icon: Clock,         change: "+3",  color: "text-yellow-600" },
+    { label: "Resolved",         value: resolved,        icon: CheckCircle2,  change: "+2",  color: "text-green-600" },
+    { label: "Active Citizens",  value: activeCitizens,  icon: Users,         change: `+${activeCitizens}`, color: "text-sky-600" },
+  ];
+
+  // ── Chart data ──
+  const catCount = (cat: string) => allComplaints.filter((c) => c.category === cat).length;
+  const barData = [
+    { name: "Roads",    count: catCount("roads") },
+    { name: "Water",    count: catCount("water") },
+    { name: "Garbage",  count: catCount("garbage") },
+    { name: "Lighting", count: catCount("lighting") },
+    { name: "Drainage", count: catCount("drainage") },
+    { name: "Other",    count: catCount("other") },
+  ];
+  const pieData = [
+    { name: "Resolved",    value: allComplaints.filter((c) => c.status === "resolved").length,    color: "#22c55e" },
+    { name: "In Progress", value: allComplaints.filter((c) => c.status === "in-progress").length, color: "#0ea5e9" },
+    { name: "Assigned",    value: allComplaints.filter((c) => c.status === "assigned").length,    color: "#3b82f6" },
+    { name: "Pending",     value: allComplaints.filter((c) => c.status === "pending").length,     color: "#f59e0b" },
+    { name: "Reported",    value: allComplaints.filter((c) => c.status === "reported").length,    color: "#9ca3af" },
+  ];
+  const cityCount: Record<string, number> = {};
+  allComplaints.forEach((c) => { cityCount[c.city] = (cityCount[c.city] ?? 0) + 1; });
+  const cityData = Object.entries(cityCount).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([city, count]) => ({ city, count }));
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -253,7 +359,7 @@ export default function AdminDashboard() {
                   <SelectContent className="bg-card">
                     <SelectItem value="all">All Departments</SelectItem>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {departments.map((d) => (
+                    {deptList.map((d) => (
                       <SelectItem key={d} value={d}>{d}</SelectItem>
                     ))}
                   </SelectContent>
@@ -289,10 +395,10 @@ export default function AdminDashboard() {
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm">
                             <MapPin className="h-3 w-3 text-muted-foreground" />
-                            {c.location.city}
+                            {c.city}
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">{c.reporter.name}</TableCell>
+                        <TableCell className="text-sm">{c.reporterName}</TableCell>
                         <TableCell>
                           <Badge className={`capitalize text-xs ${priorityCls[c.priority]}`}>{c.priority}</Badge>
                         </TableCell>
@@ -307,7 +413,10 @@ export default function AdminDashboard() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedComplaint(c); setAssignDeptValue(c.department ?? ""); }}>
+                            <Button
+                              variant="ghost" size="icon" className="h-8 w-8"
+                              onClick={() => { setSelectedComplaint(c); setAssignDeptValue(c.department ?? ""); }}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                             <DropdownMenu>
@@ -321,13 +430,13 @@ export default function AdminDashboard() {
                                   Assign Department
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => setStatusOverrides((prev) => ({ ...prev, [c.id]: "in-progress" }))}
+                                  onClick={() => handleSetStatus(c, "in-progress")}
                                   disabled={c.status === "in-progress" || c.status === "resolved"}
                                 >
                                   Set In-Progress
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => setStatusOverrides((prev) => ({ ...prev, [c.id]: "resolved" }))}
+                                  onClick={() => handleSetStatus(c, "resolved")}
                                   disabled={c.status === "resolved"}
                                 >
                                   Mark Resolved
@@ -372,7 +481,12 @@ export default function AdminDashboard() {
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    <Pie
+                      data={pieData} dataKey="value" nameKey="name"
+                      cx="50%" cy="50%" outerRadius={75}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
                       {pieData.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
                       ))}
@@ -406,10 +520,10 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-4">
                   {[
-                    { label: "Avg. Classification Confidence", value: `${avgAiScore}%`, sub: "Based on all reports" },
-                    { label: "Duplicate Detection Rate", value: `${Math.round((complaints.filter((c) => c.isDuplicate).length / complaints.length) * 100)}%`, sub: "Duplicates found" },
-                    { label: "Auto-routed to Departments", value: `${complaints.filter((c) => c.department !== null).length}/${complaints.length}`, sub: "AI department routing" },
-                    { label: "High Priority AI Flags", value: complaints.filter((c) => c.priority === "high").length.toString(), sub: "Urgent issues identified" },
+                    { label: "Avg. Classification Confidence", value: `${avgAiScore}%`,                                                                                         sub: "Based on all reports" },
+                    { label: "Duplicate Detection Rate",       value: `${Math.round((allComplaints.filter((c) => c.isDuplicate).length / (allComplaints.length || 1)) * 100)}%`, sub: "Duplicates found" },
+                    { label: "Auto-routed to Departments",     value: `${allComplaints.filter((c) => c.department !== null).length}/${allComplaints.length}`,                    sub: "AI department routing" },
+                    { label: "High Priority AI Flags",         value: `${allComplaints.filter((c) => c.priority === "high").length}`,                                           sub: "Urgent issues identified" },
                   ].map((stat) => (
                     <div key={stat.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                       <div>
@@ -446,7 +560,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <p className="text-sm text-muted-foreground leading-relaxed">{selectedComplaint.description}</p>
+              {selectedComplaint.description && (
+                <p className="text-sm text-muted-foreground leading-relaxed">{selectedComplaint.description}</p>
+              )}
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
@@ -455,11 +571,11 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Reporter</p>
-                  <p className="font-medium">{selectedComplaint.reporter.name}</p>
+                  <p className="font-medium">{selectedComplaint.reporterName}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Location</p>
-                  <p className="font-medium">{selectedComplaint.location.city}, {selectedComplaint.location.district}</p>
+                  <p className="font-medium">{selectedComplaint.city}, {selectedComplaint.district}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Date</p>
@@ -483,14 +599,14 @@ export default function AdminDashboard() {
                   value={assignDeptValue || undefined}
                   onValueChange={(v) => {
                     setAssignDeptValue(v);
-                    setDeptOverrides((prev) => ({ ...prev, [selectedComplaint.id]: v }));
+                    handleAssignDept(selectedComplaint, v);
                   }}
                 >
                   <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent className="bg-card">
-                    {departments.map((dept) => (
+                    {deptList.map((dept) => (
                       <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                     ))}
                   </SelectContent>
@@ -501,15 +617,13 @@ export default function AdminDashboard() {
                 <Button variant="outline" className="flex-1" onClick={() => setSelectedComplaint(null)}>Close</Button>
                 <Button
                   className="flex-1 bg-success hover:bg-success/90"
-                  disabled={statusOverrides[selectedComplaint.id] === "resolved" || selectedComplaint.status === "resolved"}
+                  disabled={selectedComplaint.status === "resolved"}
                   onClick={() => {
-                    setStatusOverrides((prev) => ({ ...prev, [selectedComplaint.id]: "resolved" }));
+                    handleSetStatus(selectedComplaint, "resolved");
                     setSelectedComplaint(null);
                   }}
                 >
-                  {(statusOverrides[selectedComplaint.id] === "resolved" || selectedComplaint.status === "resolved")
-                    ? "Already Resolved"
-                    : "Mark Resolved"}
+                  {selectedComplaint.status === "resolved" ? "Already Resolved" : "Mark Resolved"}
                 </Button>
               </div>
             </div>
