@@ -71,3 +71,53 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Backend (Node.js + PostgreSQL)
+
+A backend API is now included under `backend/` with Tamil Nadu civic issue sample data.
+
+### 1) Install backend dependencies
+
+```sh
+cd backend
+npm install
+```
+
+### 2) Create PostgreSQL database
+
+```sql
+CREATE DATABASE fix_it_now;
+```
+
+### 3) Load schema + seed data
+
+```sh
+psql -U postgres -d fix_it_now -f db/tamil_nadu_civic_seed.sql
+```
+
+### 4) Configure environment
+
+```sh
+cp .env.example .env
+```
+
+Update `DATABASE_URL` if needed.
+
+### 5) Run backend server
+
+```sh
+npm run dev
+```
+
+Server starts at `http://localhost:4000`.
+
+### Main API endpoints
+
+- `GET /health`
+- `GET /api/districts`
+- `GET /api/categories`
+- `GET /api/issues`
+- `GET /api/issues?district=Chennai&category=roads&status=pending`
+- `POST /api/issues`
+- `GET /api/stats/overview`
+- `GET /api/stats/by-district`
