@@ -28,7 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { complaints, type Complaint, type IssueCategory } from "@/lib/mockData";
+import { complaints as mockComplaints, type Complaint, type IssueCategory } from "@/lib/mockData";
+import { useComplaints } from "@/hooks/useComplaints";
+import type { ApiComplaint } from "@/lib/api";
 
 // Fix Leaflet default icon path issue with Vite
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,16 +85,66 @@ const heatZones = [
   { lat: 11.6651, lng: 78.1464, radius: 900,  color: "#fb923c" },
 ];
 
+// ─── Normalised map complaint type ───────────────────────────────────────────
+type MapComplaint = {
+  id: string;
+  title: string;
+  category: IssueCategory;
+  status: string;
+  priority: string;
+  description: string;
+  aiConfidence: number;
+  upvotes: number;
+  location: { lat: number; lng: number; address: string; city: string; district: string };
+  statusHistory: { status: string; date: string; note: string }[];
+};
+
+function fromMockComplaint(c: Complaint): MapComplaint {
+  return {
+    id:           c.id,
+    title:        c.title,
+    category:     c.category,
+    status:       c.status,
+    priority:     c.priority,
+    description:  c.description,
+    aiConfidence: c.aiConfidence,
+    upvotes:      c.upvotes,
+    location:     c.location,
+    statusHistory: c.statusHistory,
+  };
+}
+
+function fromApiComplaint(c: ApiComplaint): MapComplaint {
+  return {
+    id:           c.refId ?? c.id,
+    title:        c.title,
+    category:     c.category as IssueCategory,
+    status:       c.status,
+    priority:     c.priority,
+    description:  "",
+    aiConfidence: c.aiConfidence,
+    upvotes:      c.upvotes,
+    location:     { lat: c.lat, lng: c.lng, address: c.address, city: c.city, district: c.district },
+    statusHistory: [],
+  };
+}
+
 export default function MapView() {
+  const { data: apiData } = useComplaints();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showHeatmap, setShowHeatmap] = useState(false);
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [selectedComplaint, setSelectedComplaint] = useState<MapComplaint | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+
+  // Use API data when available, otherwise fall back to mockData
+  const allComplaints: MapComplaint[] = apiData?.data
+    ? apiData.data.map(fromApiComplaint)
+    : mockComplaints.map(fromMockComplaint);
 
   const filtered =
     selectedCategory === "all"
-      ? complaints
-      : complaints.filter((c) => c.category === selectedCategory);
+      ? allComplaints
+      : allComplaints.filter((c) => c.category === selectedCategory);
 
   const locateMe = () => {
     if (!mapRef.current) return;
