@@ -1,0 +1,320 @@
+{
+  "project": {
+    "name": "Fix It Now",
+    "tagline": "AI-Powered Civic Complaint Platform",
+    "version": "1.0",
+    "date": "2026-02-26",
+    "status": "in-development"
+  },
+  "overview": {
+    "summary": "Fix It Now is a web-based civic complaint reporting and resolution platform. Citizens report urban infrastructure issues; AI auto-categorizes, deduplicates, and prioritizes them; municipal admins manage resolution workflows.",
+    "problemStatement": "Urban infrastructure issues often go unreported or lost in unstructured pipelines, causing slow resolutions, low citizen trust, and inefficient resource allocation by city departments."
+  },
+  "goals": [
+    {
+      "id": "G1",
+      "goal": "Make civic issue reporting frictionless",
+      "metric": "< 2 minutes to submit a report"
+    },
+    {
+      "id": "G2",
+      "goal": "Reduce duplicate complaints",
+      "metric": "≥ 80% duplicate detection rate"
+    },
+    {
+      "id": "G3",
+      "goal": "Improve resolution speed",
+      "metric": "Reduce avg. resolution time by 40%"
+    },
+    {
+      "id": "G4",
+      "goal": "Increase citizen engagement",
+      "metric": "70% of registered users submit ≥ 1 report per quarter"
+    },
+    {
+      "id": "G5",
+      "goal": "Empower admins with actionable data",
+      "metric": "Admins use heatmap insights for resource allocation"
+    }
+  ],
+  "users": [
+    {
+      "role": "citizen",
+      "description": "Residents who encounter civic issues",
+      "needs": [
+        "Simple mobile-friendly reporting flow",
+        "Visibility into report status",
+        "Notifications on updates"
+      ]
+    },
+    {
+      "role": "admin",
+      "description": "Municipal department staff managing complaints",
+      "needs": [
+        "Filtering and prioritization tools",
+        "Department assignment workflow",
+        "Analytics and heatmaps for resource allocation"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "landing",
+      "path": "/",
+      "component": "Index",
+      "description": "Landing page with hero, features, and CTA sections",
+      "sections": ["HeroSection", "FeaturesSection", "CTASection"]
+    },
+    {
+      "id": "report",
+      "path": "/report",
+      "component": "ReportIssue",
+      "description": "Civic issue submission form",
+      "requiresAuth": false
+    },
+    {
+      "id": "userDashboard",
+      "path": "/dashboard",
+      "component": "UserDashboard",
+      "description": "Citizen personal report tracker",
+      "requiresAuth": true,
+      "requiredRole": "citizen"
+    },
+    {
+      "id": "adminDashboard",
+      "path": "/admin",
+      "component": "AdminDashboard",
+      "description": "Municipal admin complaint management panel",
+      "requiresAuth": true,
+      "requiredRole": "admin"
+    },
+    {
+      "id": "map",
+      "path": "/map",
+      "component": "MapView",
+      "description": "Interactive map of all reported issues",
+      "requiresAuth": false
+    }
+  ],
+  "issueCategories": [
+    { "value": "roads", "label": "Roads & Potholes" },
+    { "value": "water", "label": "Water Supply" },
+    { "value": "garbage", "label": "Garbage Collection" },
+    { "value": "lighting", "label": "Street Lighting" },
+    { "value": "drainage", "label": "Drainage Issues" },
+    { "value": "other", "label": "Other" }
+  ],
+  "issueStatuses": [
+    { "value": "reported", "label": "Reported", "color": "gray" },
+    { "value": "pending", "label": "Pending Review", "color": "yellow" },
+    { "value": "assigned", "label": "Assigned", "color": "blue" },
+    { "value": "in-progress", "label": "In Progress", "color": "blue" },
+    { "value": "resolved", "label": "Resolved", "color": "green" }
+  ],
+  "priorityLevels": [
+    { "value": "low", "color": "green" },
+    { "value": "medium", "color": "yellow" },
+    { "value": "high", "color": "red" }
+  ],
+  "features": {
+    "reportForm": {
+      "id": "FR-01",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "category", "type": "select", "required": true, "options": "issueCategories" },
+        { "name": "description", "type": "textarea", "required": true },
+        { "name": "photo", "type": "file", "accept": "image/*", "required": false, "supportsDropAndDrop": true },
+        { "name": "voiceNote", "type": "audio", "required": false },
+        { "name": "location", "type": "geolocation", "required": false, "fallback": "manualAddress" }
+      ],
+      "onSubmit": {
+        "showSuccessToast": true,
+        "redirectTo": "/dashboard"
+      }
+    },
+    "aiPipeline": {
+      "autoClassification": true,
+      "duplicateDetection": {
+        "enabled": true,
+        "radiusMeters": 500,
+        "lookbackDays": 30
+      },
+      "priorityScoring": {
+        "enabled": true,
+        "levels": ["low", "medium", "high"]
+      }
+    },
+    "userDashboard": {
+      "stats": ["totalReports", "inProgress", "resolved", "pending"],
+      "sidebar": ["myReports", "notifications", "profile", "settings"],
+      "reportList": {
+        "columns": ["title", "category", "status", "date", "location"],
+        "clickAction": "openDetailView"
+      }
+    },
+    "adminDashboard": {
+      "stats": ["totalComplaints", "pendingReview", "resolvedToday", "activeCitizens"],
+      "table": {
+        "columns": ["id", "title", "category", "location", "reporter", "priority", "status", "date", "department"],
+        "sortable": true,
+        "filterable": true,
+        "filterFields": ["category", "status", "priority", "dateRange", "department"]
+      },
+      "actions": ["viewDetails", "assignDepartment", "updateStatus", "markResolved"]
+    },
+    "mapView": {
+      "markers": true,
+      "filterByCategory": true,
+      "heatmapToggle": true,
+      "markerClickPanel": {
+        "fields": ["title", "category", "location", "status", "photo"]
+      },
+      "controls": ["zoomIn", "zoomOut", "locateMe", "layerToggle"]
+    }
+  },
+  "nonFunctionalRequirements": {
+    "performance": {
+      "pageLoad": "< 2s on 4G",
+      "mapRender": "< 3s with 1000+ markers"
+    },
+    "accessibility": "WCAG 2.1 AA",
+    "responsiveness": {
+      "minWidth": "320px",
+      "breakpoints": ["mobile", "tablet", "desktop"]
+    },
+    "security": {
+      "authProtectedRoutes": ["/dashboard", "/admin"],
+      "noPIIInPublicMap": true
+    },
+    "scalability": "Support 100,000+ reports without UI degradation",
+    "uptime": "99.5%"
+  },
+  "techStack": {
+    "frontend": {
+      "framework": "React 18",
+      "language": "TypeScript",
+      "buildTool": "Vite",
+      "styling": ["TailwindCSS", "shadcn/ui"],
+      "routing": "React Router v6",
+      "dataFetching": "TanStack Query v5",
+      "forms": ["React Hook Form", "Zod"],
+      "icons": "lucide-react",
+      "testing": "Vitest",
+      "packageManager": "Bun"
+    },
+    "backend": {
+      "status": "planned",
+      "runtime": "Node.js",
+      "framework": "Express or Fastify",
+      "orm": "Prisma",
+      "database": {
+        "engine": "PostgreSQL 16",
+        "extensions": ["PostGIS"],
+        "spatialIndex": "GIST on complaints.location (POINT geometry)",
+        "features": [
+          "ST_DWithin for 500m duplicate detection",
+          "ST_ClusterDBSCAN for heatmap clustering",
+          "tsvector + GIN index for full-text search",
+          "Enum types for status, priority, category",
+          "UUID primary keys"
+        ],
+        "tables": ["complaints", "users", "departments", "audit_logs", "notifications"]
+      },
+      "auth": "JWT + refresh tokens (Passport.js)",
+      "realtime": "WebSocket (Socket.io) or SSE",
+      "fileStorage": "Supabase Storage or AWS S3",
+      "aiPipeline": "Python microservice (classification, dedup, priority scoring)"
+    }
+  },
+  "outOfScope": [
+    "Native mobile apps (iOS / Android)",
+    "Multi-city support",
+    "Payment or reward system",
+    "Government ERP integration",
+    "Offline-first PWA"
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "UI Scaffold",
+      "deliverables": "All pages, static mock data, design system",
+      "status": "complete"
+    },
+    {
+      "id": "M2",
+      "name": "Auth",
+      "deliverables": "Registration, login, role-based access",
+      "target": "Q1 2026",
+      "status": "pending"
+    },
+    {
+      "id": "M3",
+      "name": "Backend API",
+      "deliverables": "PostgreSQL 16 + PostGIS schema, Prisma ORM, REST API (CRUD for complaints, departments, users), JWT auth",
+      "target": "Q1 2026",
+      "status": "pending"
+    },
+    {
+      "id": "M4",
+      "name": "AI Pipeline",
+      "deliverables": "Categorization, dedup, priority scoring",
+      "target": "Q2 2026",
+      "status": "pending"
+    },
+    {
+      "id": "M5",
+      "name": "Map Integration",
+      "deliverables": "Real map tiles, live markers",
+      "target": "Q2 2026",
+      "status": "pending"
+    },
+    {
+      "id": "M6",
+      "name": "Real-time",
+      "deliverables": "WebSocket status updates, push notifications",
+      "target": "Q3 2026",
+      "status": "pending"
+    },
+    {
+      "id": "M7",
+      "name": "Analytics",
+      "deliverables": "Admin heatmaps, trend charts, data export",
+      "target": "Q3 2026",
+      "status": "pending"
+    },
+    {
+      "id": "M8",
+      "name": "Launch",
+      "deliverables": "Public launch, performance hardening",
+      "target": "Q4 2026",
+      "status": "pending"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Map API costs at scale",
+      "impact": "high",
+      "mitigation": "Cache tile layers; use open-source alternative (Leaflet + OSM)"
+    },
+    {
+      "risk": "AI model accuracy for Indic/regional context",
+      "impact": "medium",
+      "mitigation": "Fine-tune on regional complaint datasets"
+    },
+    {
+      "risk": "Geolocation permissions denied by users",
+      "impact": "medium",
+      "mitigation": "Provide manual address search as fallback"
+    },
+    {
+      "risk": "Spam and abuse reports",
+      "impact": "medium",
+      "mitigation": "Rate limiting, CAPTCHA, and report flagging system"
+    },
+    {
+      "risk": "Backend integration delays",
+      "impact": "high",
+      "mitigation": "Mock API layer in frontend for parallel development"
+    }
+  ]
+}

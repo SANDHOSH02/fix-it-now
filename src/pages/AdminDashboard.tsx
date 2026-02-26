@@ -1,17 +1,30 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   Search,
   Filter,
   MapPin,
   Eye,
   MoreHorizontal,
-  ChevronDown,
-  X,
   Users,
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Brain,
+  TrendingUp,
+  BarChart2,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,173 +56,171 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { complaints, departments } from "@/lib/mockData";
+
+//  Derived stats 
+const totalComplaints = complaints.length;
+const pendingReview   = complaints.filter((c) => c.status === "pending" || c.status === "reported").length;
+const resolvedToday   = complaints.filter((c) => c.status === "resolved" && c.date.includes("Feb 2")).length;
+const activeCitizens  = new Set(complaints.map((c) => c.reporter.userId)).size;
+const avgAiScore      = Math.round(complaints.reduce((a, c) => a + c.aiConfidence, 0) / complaints.length);
 
 const adminStats = [
-  { label: "Total Complaints", value: 0, icon: AlertTriangle, change: "0", color: "text-primary" },
-  { label: "Pending Review", value: 0, icon: Clock, change: "0", color: "text-warning" },
-  { label: "Resolved Today", value: 0, icon: CheckCircle2, change: "0", color: "text-success" },
-  { label: "Active Citizens", value: 0, icon: Users, change: "0", color: "text-info" },
+  { label: "Total Complaints", value: totalComplaints, icon: AlertTriangle, change: "+5",  color: "text-primary" },
+  { label: "Pending Review",   value: pendingReview,   icon: Clock,         change: "+3",  color: "text-yellow-600" },
+  { label: "Resolved",         value: resolvedToday,   icon: CheckCircle2,  change: "+2",  color: "text-green-600" },
+  { label: "Active Citizens",  value: activeCitizens,  icon: Users,         change: `+${activeCitizens}`, color: "text-sky-600" },
 ];
 
-const complaints = [
-  {
-    id: "0",
-    title: "Major road damage near school",
-    category: "Roads",
-    location: "0",
-    reporter: "0",
-    priority: "high",
-    status: "pending",
-    date: "0",
-    department: null,
-  },
-  {
-    id: "0",
-    title: "Water main leak",
-    category: "Water",
-    location: "0",
-    reporter: "0",
-    priority: "high",
-    status: "in-progress",
-    date: "0",
-    department: "Water Dept.",
-  },
-  {
-    id: "0",
-    title: "Street light outage",
-    category: "Lighting",
-    location: "0",
-    reporter: "0",
-    priority: "medium",
-    status: "assigned",
-    date: "0",
-    department: "Electrical",
-  },
-  {
-    id: "0",
-    title: "Overflowing garbage bin",
-    category: "Garbage",
-    location: "0",
-    reporter: "0",
-    priority: "low",
-    status: "resolved",
-    date: "0",
-    department: "Sanitation",
-  },
-  {
-    id: "0",
-    title: "Blocked drainage",
-    category: "Drainage",
-    location: "0",
-    reporter: "0",
-    priority: "medium",
-    status: "in-progress",
-    date: "0",
-    department: "Public Works",
-  },
+//  Chart data 
+const categoryCount = (cat: string) => complaints.filter((c) => c.category === cat).length;
+const barData = [
+  { name: "Roads",    count: categoryCount("roads") },
+  { name: "Water",    count: categoryCount("water") },
+  { name: "Garbage",  count: categoryCount("garbage") },
+  { name: "Lighting", count: categoryCount("lighting") },
+  { name: "Drainage", count: categoryCount("drainage") },
+  { name: "Other",    count: categoryCount("other") },
+];
+const pieData = [
+  { name: "Resolved",    value: complaints.filter((c) => c.status === "resolved").length,    color: "#22c55e" },
+  { name: "In Progress", value: complaints.filter((c) => c.status === "in-progress").length, color: "#0ea5e9" },
+  { name: "Assigned",    value: complaints.filter((c) => c.status === "assigned").length,    color: "#3b82f6" },
+  { name: "Pending",     value: complaints.filter((c) => c.status === "pending").length,     color: "#f59e0b" },
+  { name: "Reported",    value: complaints.filter((c) => c.status === "reported").length,    color: "#9ca3af" },
 ];
 
-const departments = [
-  "Roads Dept.",
-  "Water Dept.",
-  "Electrical",
-  "Sanitation",
-  "Public Works",
-  "Parks & Rec",
-];
+//  City wise volume for horizontal bar 
+const cityCount: Record<string, number> = {};
+complaints.forEach((c) => { cityCount[c.location.city] = (cityCount[c.location.city] ?? 0) + 1; });
+const cityData = Object.entries(cityCount).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([city, count]) => ({ city, count }));
 
-const getPriorityBadge = (priority: string) => {
-  switch (priority) {
-    case "high":
-      return <Badge className="status-badge priority-high">High</Badge>;
-    case "medium":
-      return <Badge className="status-badge priority-medium">Medium</Badge>;
-    case "low":
-      return <Badge className="status-badge priority-low">Low</Badge>;
-    default:
-      return null;
-  }
+//  Badge helpers 
+const priorityCls: Record<string, string> = {
+  high:   "bg-red-100 text-red-700",
+  medium: "bg-yellow-100 text-yellow-700",
+  low:    "bg-green-100 text-green-700",
+};
+const statusCls: Record<string, string> = {
+  reported:      "bg-gray-100 text-gray-600",
+  pending:       "bg-yellow-100 text-yellow-700",
+  assigned:      "bg-blue-100 text-blue-700",
+  "in-progress": "bg-sky-100 text-sky-700",
+  resolved:      "bg-green-100 text-green-700",
 };
 
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "pending":
-      return <Badge className="status-badge status-reported">Pending</Badge>;
-    case "assigned":
-      return <Badge className="status-badge bg-accent/10 text-accent">Assigned</Badge>;
-    case "in-progress":
-      return <Badge className="status-badge status-in-progress">In Progress</Badge>;
-    case "resolved":
-      return <Badge className="status-badge status-resolved">Resolved</Badge>;
-    default:
-      return null;
-  }
-};
-
+// 
 export default function AdminDashboard() {
   const [selectedComplaint, setSelectedComplaint] = useState<typeof complaints[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [activeTab, setActiveTab] = useState<"table" | "analytics">("table");
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, typeof complaints[0]["status"]>>({});
+  const [deptOverrides, setDeptOverrides] = useState<Record<string, string>>({});
+  const [assignDeptValue, setAssignDeptValue] = useState<string>("");
+
+  const allComplaints = complaints.map((c) => ({
+    ...c,
+    status: statusOverrides[c.id] ?? c.status,
+    department: deptOverrides[c.id] !== undefined ? deptOverrides[c.id] : c.department,
+  }));
+
+  const filtered = allComplaints.filter((c) => {
+    const matchesSearch =
+      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.location.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.reporter.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus   = filterStatus   === "all" || c.status   === filterStatus;
+    const matchesPriority = filterPriority === "all" || c.priority === filterPriority;
+    const matchesCategory = filterCategory === "all" || c.category === filterCategory;
+    return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <Navbar />
       <main className="flex-1 p-6 md:p-8">
         <div className="max-w-7xl mx-auto">
+
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Manage and track all civic complaints</p>
+          <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+              <p className="text-muted-foreground text-sm">Tamil Nadu Civic Complaint Management — {new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}</p>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex items-center gap-1.5 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5 text-xs">
+                <Brain className="h-3.5 w-3.5 text-primary" />
+                <span className="font-medium text-primary">AI Avg. Confidence: {avgAiScore}%</span>
+              </div>
+            </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {adminStats.map((stat) => (
-              <div key={stat.label} className="card-civic">
+              <div key={stat.label} className="bg-card border border-border rounded-xl p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    <p className="text-2xl font-bold">{stat.value.toLocaleString()}</p>
-                    <p className={`text-xs mt-1 ${stat.change.startsWith("+") ? "text-success" : "text-destructive"}`}>
-                      {stat.change} from last week
-                    </p>
+                    <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-xs text-success mt-0.5">{stat.change} this week</p>
                   </div>
-                  <div className={`h-10 w-10 rounded-lg bg-muted flex items-center justify-center ${stat.color}`}>
-                    <stat.icon className="h-5 w-5" />
+                  <div className={`h-9 w-9 rounded-lg bg-muted flex items-center justify-center ${stat.color}`}>
+                    <stat.icon className="h-4 w-4" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Complaints Table */}
-            <div className="lg:col-span-2 card-civic">
+          {/* Tab switcher */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setActiveTab("table")}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === "table" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+            >
+              Complaints Table
+            </button>
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === "analytics" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+            >
+              <BarChart2 className="h-4 w-4" /> Analytics
+            </button>
+          </div>
+
+          {activeTab === "table" && (
+            <div className="bg-card border border-border rounded-xl">
               {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <div className="relative flex-1">
+              <div className="p-5 border-b border-border flex flex-col sm:flex-row gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-48">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search complaints..."
+                    placeholder="Search by title, city, reporter"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9"
                   />
                 </div>
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[140px] bg-background">
-                    <Filter className="h-4 w-4 mr-2" />
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-36 bg-background">
+                    <Filter className="h-4 w-4 mr-1.5" />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-card">
                     <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="reported">Reported</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="assigned">Assigned</SelectItem>
                     <SelectItem value="in-progress">In Progress</SelectItem>
                     <SelectItem value="resolved">Resolved</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[140px] bg-background">
+                <Select value={filterPriority} onValueChange={setFilterPriority}>
+                  <SelectTrigger className="w-36 bg-background">
                     <SelectValue placeholder="Priority" />
                   </SelectTrigger>
                   <SelectContent className="bg-card">
@@ -219,60 +230,95 @@ export default function AdminDashboard() {
                     <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="w-36 bg-background">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="roads">Roads</SelectItem>
+                    <SelectItem value="water">Water</SelectItem>
+                    <SelectItem value="garbage">Garbage</SelectItem>
+                    <SelectItem value="lighting">Lighting</SelectItem>
+                    <SelectItem value="drainage">Drainage</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Badge variant="secondary" className="self-center">{filtered.length} results</Badge>
               </div>
 
-              {/* Table */}
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
                       <TableHead>Issue</TableHead>
+                      <TableHead>City</TableHead>
+                      <TableHead>Reporter</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Department</TableHead>
+                      <TableHead>AI%</TableHead>
+                      <TableHead>Dept.</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {complaints.map((complaint) => (
-                      <TableRow key={complaint.id} className="cursor-pointer hover:bg-muted/50">
-                        <TableCell className="font-medium">{complaint.id}</TableCell>
+                    {filtered.map((c) => (
+                      <TableRow key={c.id} className="cursor-pointer hover:bg-muted/30">
+                        <TableCell className="font-mono text-xs">{c.id}</TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-medium text-sm">{complaint.title}</p>
-                            <p className="text-xs text-muted-foreground">{complaint.category}</p>
+                            <p className="font-medium text-sm max-w-[200px] truncate">{c.title}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{c.category}</p>
                           </div>
                         </TableCell>
-                        <TableCell>{getPriorityBadge(complaint.priority)}</TableCell>
-                        <TableCell>{getStatusBadge(complaint.status)}</TableCell>
                         <TableCell>
-                          {complaint.department || (
-                            <span className="text-muted-foreground text-sm">Unassigned</span>
-                          )}
+                          <div className="flex items-center gap-1 text-sm">
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            {c.location.city}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">{c.reporter.name}</TableCell>
+                        <TableCell>
+                          <Badge className={`capitalize text-xs ${priorityCls[c.priority]}`}>{c.priority}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`capitalize text-xs ${statusCls[c.status]}`}>{c.status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-primary font-semibold text-sm">{c.aiConfidence}%</span>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {c.department ?? <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setSelectedComplaint(complaint)}
-                            >
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedComplaint(c); setAssignDeptValue(c.department ?? ""); }}>
                               <Eye className="h-4 w-4" />
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="bg-card">
-                                <DropdownMenuItem>Assign Department</DropdownMenuItem>
-                                <DropdownMenuItem>Update Status</DropdownMenuItem>
-                                <DropdownMenuItem>View on Map</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
-                                  Mark as Spam
+                                <DropdownMenuItem onClick={() => { setSelectedComplaint(c); setAssignDeptValue(c.department ?? ""); }}>
+                                  Assign Department
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setStatusOverrides((prev) => ({ ...prev, [c.id]: "in-progress" }))}
+                                  disabled={c.status === "in-progress" || c.status === "resolved"}
+                                >
+                                  Set In-Progress
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setStatusOverrides((prev) => ({ ...prev, [c.id]: "resolved" }))}
+                                  disabled={c.status === "resolved"}
+                                >
+                                  Mark Resolved
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Mark as Spam</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -283,96 +329,173 @@ export default function AdminDashboard() {
                 </Table>
               </div>
             </div>
+          )}
 
-            {/* Heatmap Panel */}
-            <div className="card-civic">
-              <h3 className="font-semibold mb-4">Issue Heatmap</h3>
-              <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-4">
-                <div className="text-center text-muted-foreground">
-                  <MapPin className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Interactive heatmap</p>
-                  <p className="text-xs">Showing issue density</p>
+          {activeTab === "analytics" && (
+            <div className="grid lg:grid-cols-2 gap-6">
+
+              {/* Category bar chart */}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Complaints by Category</h3>
                 </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={barData} margin={{ top: 0, right: 10, bottom: 0, left: -20 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">High density areas</span>
-                  <span className="font-medium text-destructive">0 zones</span>
+
+              {/* Status pie chart */}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart2 className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Status Distribution</h3>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Medium density</span>
-                  <span className="font-medium text-warning">0 zones</span>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                      {pieData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* City volume */}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Top Cities by Complaint Volume</h3>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Low density</span>
-                  <span className="font-medium text-success">0 zones</span>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={cityData} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 60 }}>
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="city" type="category" tick={{ fontSize: 11 }} width={60} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#10B981" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* AI Stats */}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">AI Pipeline Statistics</h3>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    { label: "Avg. Classification Confidence", value: `${avgAiScore}%`, sub: "Based on all reports" },
+                    { label: "Duplicate Detection Rate", value: `${Math.round((complaints.filter((c) => c.isDuplicate).length / complaints.length) * 100)}%`, sub: "Duplicates found" },
+                    { label: "Auto-routed to Departments", value: `${complaints.filter((c) => c.department !== null).length}/${complaints.length}`, sub: "AI department routing" },
+                    { label: "High Priority AI Flags", value: complaints.filter((c) => c.priority === "high").length.toString(), sub: "Urgent issues identified" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                      <div>
+                        <p className="text-sm font-medium">{stat.label}</p>
+                        <p className="text-xs text-muted-foreground">{stat.sub}</p>
+                      </div>
+                      <p className="text-xl font-bold text-primary">{stat.value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 
-      {/* Complaint Detail Modal */}
+      {/* Complaint Detail Dialog */}
       <Dialog open={!!selectedComplaint} onOpenChange={() => setSelectedComplaint(null)}>
         <DialogContent className="max-w-lg bg-card">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Complaint Details</span>
-              <Badge variant="outline">{selectedComplaint?.id}</Badge>
+              {selectedComplaint && <Badge variant="outline" className="font-mono text-xs">{selectedComplaint.id}</Badge>}
             </DialogTitle>
           </DialogHeader>
           {selectedComplaint && (
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium text-lg">{selectedComplaint.title}</h4>
-                <div className="flex items-center gap-2 mt-2">
-                  {getPriorityBadge(selectedComplaint.priority)}
-                  {getStatusBadge(selectedComplaint.status)}
+                <h4 className="font-semibold">{selectedComplaint.title}</h4>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  <Badge className={`capitalize text-xs ${priorityCls[selectedComplaint.priority]}`}>{selectedComplaint.priority} priority</Badge>
+                  <Badge className={`capitalize text-xs ${statusCls[selectedComplaint.status]}`}>{selectedComplaint.status}</Badge>
+                  <Badge variant="outline" className="text-xs text-primary">AI: {selectedComplaint.aiConfidence}%</Badge>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <p className="text-sm text-muted-foreground leading-relaxed">{selectedComplaint.description}</p>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Category</p>
-                  <p className="font-medium">{selectedComplaint.category}</p>
+                  <p className="text-xs text-muted-foreground">Category</p>
+                  <p className="font-medium capitalize">{selectedComplaint.category}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Reporter</p>
-                  <p className="font-medium">{selectedComplaint.reporter}</p>
+                  <p className="text-xs text-muted-foreground">Reporter</p>
+                  <p className="font-medium">{selectedComplaint.reporter.name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Location</p>
-                  <p className="font-medium">{selectedComplaint.location}</p>
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="font-medium">{selectedComplaint.location.city}, {selectedComplaint.location.district}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Reported Date</p>
+                  <p className="text-xs text-muted-foreground">Date</p>
                   <p className="font-medium">{selectedComplaint.date}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Upvotes</p>
+                  <p className="font-medium">{selectedComplaint.upvotes}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Duplicate</p>
+                  <p className={`font-medium ${selectedComplaint.isDuplicate ? "text-warning" : "text-success"}`}>
+                    {selectedComplaint.isDuplicate ? "Yes" : "None"}
+                  </p>
                 </div>
               </div>
 
               <div>
-                <p className="text-muted-foreground text-sm mb-2">Assign to Department</p>
-                <Select defaultValue={selectedComplaint.department || undefined}>
+                <p className="text-xs text-muted-foreground mb-2">Assign to Department</p>
+                <Select
+                  value={assignDeptValue || undefined}
+                  onValueChange={(v) => {
+                    setAssignDeptValue(v);
+                    setDeptOverrides((prev) => ({ ...prev, [selectedComplaint.id]: v }));
+                  }}
+                >
                   <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent className="bg-card">
                     {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button variant="outline" className="flex-1">
-                  View on Map
-                </Button>
-                <Button variant="success" className="flex-1">
-                  Mark Resolved
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setSelectedComplaint(null)}>Close</Button>
+                <Button
+                  className="flex-1 bg-success hover:bg-success/90"
+                  disabled={statusOverrides[selectedComplaint.id] === "resolved" || selectedComplaint.status === "resolved"}
+                  onClick={() => {
+                    setStatusOverrides((prev) => ({ ...prev, [selectedComplaint.id]: "resolved" }));
+                    setSelectedComplaint(null);
+                  }}
+                >
+                  {(statusOverrides[selectedComplaint.id] === "resolved" || selectedComplaint.status === "resolved")
+                    ? "Already Resolved"
+                    : "Mark Resolved"}
                 </Button>
               </div>
             </div>
