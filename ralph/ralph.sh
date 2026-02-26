@@ -201,9 +201,63 @@ for ms in "${milestones[@]}"; do
 done
 
 # =============================================================================
-# 9. BACKEND STACK (PostgreSQL)
+# 9. SERVER READINESS
 # =============================================================================
-head "Backend Stack  ${DIM}(planned)${RESET}"
+head "Server Readiness"
+
+server_files=(
+  "server/package.json          | Backend package manifest"
+  "server/tsconfig.json         | TypeScript config"
+  "server/.env.example          | Env template"
+  "server/prisma/schema.prisma  | Prisma schema (PostgreSQL + PostGIS)"
+  "server/prisma/seed.ts        | Seed script"
+  "server/src/index.ts          | Express entry point"
+  "server/src/routes/auth.ts    | Auth routes (register/login/refresh/logout/me)"
+  "server/src/routes/complaints.ts | Complaints CRUD + PostGIS dedup"
+  "server/src/routes/admin.ts   | Admin stats + heatmap"
+  "server/src/routes/users.ts   | User profile + notifications"
+  "server/src/routes/departments.ts | Departments list"
+  ".env.example                 | Frontend env template (VITE_API_URL)"
+)
+
+server_missing=0
+for entry in "${server_files[@]}"; do
+  IFS='|' read -r file desc <<< "$entry"
+  file=$(echo "$file" | xargs)
+  desc=$(echo "$desc" | xargs)
+  if [[ -f "$ROOT_DIR/$file" ]]; then
+    pass "${BOLD}$file${RESET}  ${DIM}$desc${RESET}"
+  else
+    fail "${BOLD}$file${RESET}  ${RED}(missing) $desc${RESET}"
+    ((server_missing++))
+  fi
+done
+
+echo ""
+if [[ $server_missing -eq 0 ]]; then
+  info "${GREEN}All server files present.${RESET}  Next: ${YELLOW}cd server && npm install && npx prisma migrate dev && npm run dev${RESET}"
+else
+  warn "$server_missing server file(s) missing."
+fi
+
+# Check if server node_modules installed
+if [[ -d "$ROOT_DIR/server/node_modules" ]]; then
+  pass "server/node_modules  ${DIM}(npm install done)${RESET}"
+else
+  warn "server/node_modules not found — run: ${YELLOW}cd server && npm install${RESET}"
+fi
+
+# Check if .env exists for server
+if [[ -f "$ROOT_DIR/server/.env" ]]; then
+  pass "server/.env  ${DIM}(environment configured)${RESET}"
+else
+  warn "server/.env missing — copy .env.example and fill in DATABASE_URL + JWT secrets"
+fi
+
+# =============================================================================
+# 10. BACKEND STACK (PostgreSQL)
+# =============================================================================
+head "Backend Stack"
 
 backend_stack=(
   "Database    | PostgreSQL 16 + PostGIS"
