@@ -14,6 +14,7 @@ import {
   Plus,
   Brain,
   TrendingUp,
+  ThumbsUp,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMyComplaints } from "@/hooks/useComplaints";
+import { useMyComplaints, useUpvoteComplaint } from "@/hooks/useComplaints";
 import { complaints as mockComplaints, getComplaintsForUser } from "@/lib/mockData";
 import type { ApiComplaintDetail } from "@/lib/api";
 
@@ -52,6 +53,7 @@ const priorityClass: Record<string, string> = {
 
 // Shape that works for both API and mock data
 type ReportItem = {
+  _apiId: string;    // UUID for API mutations; same as id for mock entries
   id: string;
   title: string;
   status: string;
@@ -62,11 +64,13 @@ type ReportItem = {
   description: string;
   department?: string | null;
   aiConfidence?: number;
+  upvotes: number;
   statusHistory: { status: string; date?: string; note?: string; createdAt?: string }[];
 };
 
 function apiToReportItem(c: ApiComplaintDetail): ReportItem {
   return {
+    _apiId: c.id,
     id: c.refId ?? c.id,
     title: c.title,
     status: c.status,
@@ -77,6 +81,7 @@ function apiToReportItem(c: ApiComplaintDetail): ReportItem {
     description: c.description,
     department: c.department?.name ?? null,
     aiConfidence: c.aiConfidence,
+    upvotes: c.upvotes,
     statusHistory: c.statusHistory.map((h) => ({
       status: h.status,
       date: new Date(h.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
@@ -93,6 +98,8 @@ export default function UserDashboard() {
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
 
   const { data: apiData, isLoading: apiLoading, isError: apiError } = useMyComplaints();
+  const upvoteMutation = useUpvoteComplaint();
+  const [upvoteOverrides, setUpvoteOverrides] = useState<Record<string, number>>({});
 
   // Use API data if available, otherwise fall back to mock data for the demo user
   const fallbackUser = { name: "Arjun Ravi", email: "arjun@example.com", district: "Chennai" };
@@ -102,7 +109,21 @@ export default function UserDashboard() {
 
   const myReports: ReportItem[] = apiData?.data
     ? apiData.data.map(apiToReportItem)
-    : getComplaintsForUser("USR-001");
+    : getComplaintsForUser("USR-001").map((c) => ({
+        _apiId: c.id,
+        id: c.id,
+        title: c.title,
+        status: c.status,
+        priority: c.priority,
+        category: c.category,
+        date: c.date,
+        location: c.location,
+        description: c.description,
+        department: c.department ?? null,
+        aiConfidence: c.aiConfidence,
+        upvotes: c.upvotes,
+        statusHistory: c.statusHistory,
+      }));
 
   const allTNComplaints = mockComplaints;
 
@@ -245,14 +266,19 @@ export default function UserDashboard() {
                 {displayed.length === 0 ? (
                   <div className="p-10 text-center text-muted-foreground text-sm">No reports found</div>
                 ) : (
-                  displayed.map((report) => (
+                  displayed.map((report) => {
+                    const currentUpvotes = upvoteOverrides[report.id] ?? report.upvotes;
+                    const hasUpvoted = upvoteOverrides[report.id] !== undefined;
+                    return (
                     <div
                       key={report.id}
-                      className="p-4 hover:bg-muted/40 cursor-pointer transition-colors"
-                      onClick={() => setSelectedReport(report)}
+                      className="p-4 hover:bg-muted/40 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onClick={() => setSelectedReport(report)}
+                        >
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-xs text-muted-foreground font-mono">{report.id}</span>
                             <Badge className={`text-xs capitalize ${statusClass[report.status]}`}>{report.status}</Badge>
@@ -271,7 +297,28 @@ export default function UserDashboard() {
                             </span>
                           </div>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                        <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (hasUpvoted) return;
+                              setUpvoteOverrides((prev) => ({ ...prev, [report.id]: currentUpvotes + 1 }));
+                              upvoteMutation.mutate(report._apiId, {
+                                onError: () => setUpvoteOverrides((prev) => ({ ...prev, [report.id]: currentUpvotes })),
+                              });
+                            }}
+                            disabled={hasUpvoted}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${hasUpvoted ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5"}`}
+                            title={hasUpvoted ? "Upvoted" : "Upvote this report"}
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                            <span>{currentUpvotes}</span>
+                          </button>
+                          <ChevronRight
+                            className="h-4 w-4 text-muted-foreground cursor-pointer"
+                            onClick={() => setSelectedReport(report)}
+                          />
+                        </div>
                       </div>
                       {/* Progress bar */}
                       <div className="mt-2.5">
@@ -290,7 +337,8 @@ export default function UserDashboard() {
                         })()}
                       </div>
                     </div>
-                  ))
+                  );
+                  })
                 )}
               </div>
             </div>
