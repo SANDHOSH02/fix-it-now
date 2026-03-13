@@ -34,9 +34,9 @@ router.get("/stats", async (_req: Request, res: Response, next: NextFunction) =>
       }),
       prisma.user.count({ where: { role: "CITIZEN", isActive: true } }),
       prisma.complaint.aggregate({ _avg: { aiConfidence: true } }),
-      prisma.complaint.groupBy({ by: ["category"], _count: true }),
-      prisma.complaint.groupBy({ by: ["status"],   _count: true }),
-      prisma.complaint.groupBy({ by: ["priority"], _count: true }),
+      prisma.complaint.groupBy({ by: ["category"], _count: true, orderBy: { category: "asc" } }),
+      prisma.complaint.groupBy({ by: ["status"],   _count: true, orderBy: { status:   "asc" } }),
+      prisma.complaint.groupBy({ by: ["priority"], _count: true, orderBy: { priority: "asc" } }),
     ]);
 
     res.json({
@@ -131,8 +131,9 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     if (!validationResult(req).isEmpty()) return next(createError("Invalid ID", 400));
     try {
+      const id = req.params.id as string;
       await prisma.user.update({
-        where: { id: req.params.id },
+        where: { id },
         data: { isActive: false },
       });
       res.json({ success: true, data: { message: "User deactivated" } });

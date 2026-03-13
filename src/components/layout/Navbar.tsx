@@ -36,12 +36,9 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <span className="text-lg font-bold text-primary-foreground">F</span>
-          </div>
+        <Link to="/" className="flex items-center">
           <span className="text-xl font-bold text-foreground">
-            FIXIT<span className="text-accent">NOW</span>
+            Fix It <span className="text-primary">Now</span>
           </span>
         </Link>
 

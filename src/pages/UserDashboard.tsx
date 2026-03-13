@@ -26,8 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMyComplaints, useUpvoteComplaint } from "@/hooks/useComplaints";
-import { complaints as mockComplaints, getComplaintsForUser } from "@/lib/mockData";
+import { useMyComplaints, useComplaints, useUpvoteComplaint } from "@/hooks/useComplaints";
 import type { ApiComplaintDetail } from "@/lib/api";
 
 const sidebarItems = [
@@ -38,17 +37,17 @@ const sidebarItems = [
 ];
 
 const statusClass: Record<string, string> = {
-  reported:      "bg-muted text-muted-foreground",
-  pending:       "bg-yellow-100 text-yellow-700",
-  assigned:      "bg-blue-100 text-blue-700",
-  "in-progress": "bg-sky-100 text-sky-700",
-  resolved:      "bg-green-100 text-green-700",
+  reported:      "bg-slate-100 text-slate-600",
+  pending:       "bg-amber-100 text-amber-700",
+  assigned:      "bg-teal-100 text-teal-700",
+  "in-progress": "bg-violet-100 text-violet-700",
+  resolved:      "bg-emerald-100 text-emerald-700",
 };
 
 const priorityClass: Record<string, string> = {
-  high:   "bg-red-100 text-red-700",
-  medium: "bg-yellow-100 text-yellow-700",
-  low:    "bg-green-100 text-green-700",
+  high:   "bg-rose-100 text-rose-700",
+  medium: "bg-amber-100 text-amber-700",
+  low:    "bg-emerald-100 text-emerald-700",
 };
 
 // Shape that works for both API and mock data
@@ -98,40 +97,23 @@ export default function UserDashboard() {
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
 
   const { data: apiData, isLoading: apiLoading, isError: apiError } = useMyComplaints();
+  const { data: allComplaintsData } = useComplaints({ pageSize: "6" });
   const upvoteMutation = useUpvoteComplaint();
   const [upvoteOverrides, setUpvoteOverrides] = useState<Record<string, number>>({});
 
-  // Use API data if available, otherwise fall back to mock data for the demo user
-  const fallbackUser = { name: "Arjun Ravi", email: "arjun@example.com", district: "Chennai" };
   const displayUser = user
     ? { name: user.name, email: user.email, district: user.district ?? "Tamil Nadu" }
-    : fallbackUser;
+    : { name: "Guest", email: "", district: "Tamil Nadu" };
 
-  const myReports: ReportItem[] = apiData?.data
-    ? apiData.data.map(apiToReportItem)
-    : getComplaintsForUser("USR-001").map((c) => ({
-        _apiId: c.id,
-        id: c.id,
-        title: c.title,
-        status: c.status,
-        priority: c.priority,
-        category: c.category,
-        date: c.date,
-        location: c.location,
-        description: c.description,
-        department: c.department ?? null,
-        aiConfidence: c.aiConfidence,
-        upvotes: c.upvotes,
-        statusHistory: c.statusHistory,
-      }));
+  const myReports: ReportItem[] = (apiData?.data ?? []).map(apiToReportItem);
 
-  const allTNComplaints = mockComplaints;
+  const recentTNComplaints = allComplaintsData?.data ?? [];
 
   const stats = [
-    { label: "Total Reports",  value: myReports.length,                                       icon: FileText,     color: "bg-primary/10 text-primary" },
-    { label: "In Progress",    value: myReports.filter((r) => r.status === "in-progress").length, icon: Loader2,  color: "bg-sky-100 text-sky-600" },
-    { label: "Resolved",       value: myReports.filter((r) => r.status === "resolved").length, icon: CheckCircle2, color: "bg-green-100 text-green-600" },
-    { label: "Reported",       value: myReports.filter((r) => r.status === "reported").length, icon: AlertCircle, color: "bg-yellow-100 text-yellow-600" },
+    { label: "Total Reports",  value: myReports.length,                                          icon: FileText,     color: "bg-primary/10 text-primary" },
+    { label: "In Progress",    value: myReports.filter((r) => r.status === "in-progress").length, icon: Loader2,      color: "bg-violet-100 text-violet-600" },
+    { label: "Resolved",       value: myReports.filter((r) => r.status === "resolved").length,   icon: CheckCircle2, color: "bg-emerald-100 text-emerald-600" },
+    { label: "Reported",       value: myReports.filter((r) => r.status === "reported").length,   icon: AlertCircle,  color: "bg-amber-100 text-amber-600" },
   ];
 
   const displayed = activeTab === "all"
@@ -236,8 +218,7 @@ export default function UserDashboard() {
               <div>
                 <p className="font-semibold text-sm mb-1">AI Insights for your area</p>
                 <p className="text-xs text-muted-foreground">
-                  Roads & Potholes are the most reported category in Chennai this week (+34%). Your report{" "}
-                  <strong>#FIX-2026-001</strong> has been upvoted by 34 residents and flagged as high-priority.
+                  Submit a complaint to get AI-powered insights and priority analysis for your district.
                 </p>
               </div>
               <TrendingUp className="h-5 w-5 text-primary/60 flex-shrink-0 mt-0.5" />
@@ -347,7 +328,9 @@ export default function UserDashboard() {
             <div className="mt-6 bg-card border border-border rounded-xl p-5">
               <h3 className="font-semibold mb-4">Recent Activity — Tamil Nadu</h3>
               <div className="space-y-2">
-                {allTNComplaints.slice(0, 6).map((c) => (
+                {recentTNComplaints.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No recent activity</p>
+                ) : recentTNComplaints.slice(0, 6).map((c) => (
                   <div key={c.id} className="flex items-center gap-3 text-sm">
                     <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                       c.status === "resolved" ? "bg-success" :
@@ -355,7 +338,7 @@ export default function UserDashboard() {
                       "bg-warning"
                     }`} />
                     <p className="flex-1 truncate text-muted-foreground">
-                      <span className="text-foreground font-medium">{c.location.city}</span> — {c.title}
+                      <span className="text-foreground font-medium">{c.city}</span> — {c.title}
                     </p>
                     <Badge className={`text-[10px] capitalize flex-shrink-0 ${statusClass[c.status] ?? ""}`}>{c.status}</Badge>
                   </div>

@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   MapPin,
   Filter,
@@ -8,6 +8,10 @@ import {
   Locate,
   X,
   Info,
+  Satellite,
+  Map as MapIcon,
+  Search,
+  Loader2,
 } from "lucide-react";
 import {
   MapContainer,
@@ -28,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { complaints as mockComplaints, type Complaint, type IssueCategory } from "@/lib/mockData";
+import type { IssueCategory } from "@/lib/mockData";
 import { useComplaints } from "@/hooks/useComplaints";
 import type { ApiComplaint } from "@/lib/api";
 
@@ -42,21 +46,21 @@ L.Icon.Default.mergeOptions({
 });
 
 const categoryConfig = {
-  all:      { label: "All Categories", color: "#2563EB" },
-  roads:    { label: "Roads",          color: "#EF4444" },
-  water:    { label: "Water",          color: "#0EA5E9" },
-  garbage:  { label: "Garbage",        color: "#F59E0B" },
-  lighting: { label: "Lighting",       color: "#10B981" },
-  drainage: { label: "Drainage",       color: "#8B5CF6" },
-  other:    { label: "Other",          color: "#6B7280" },
+  all:      { label: "All Categories", color: "#475569" },
+  roads:    { label: "Roads",          color: "#dc2626" },
+  water:    { label: "Water",          color: "#0d9488" },
+  garbage:  { label: "Garbage",        color: "#d97706" },
+  lighting: { label: "Lighting",       color: "#059669" },
+  drainage: { label: "Drainage",       color: "#7c3aed" },
+  other:    { label: "Other",          color: "#64748b" },
 } as const;
 
 const statusClass: Record<string, string> = {
-  reported:      "text-muted-foreground border-muted-foreground/40",
-  pending:       "text-yellow-600 border-yellow-400/40",
-  assigned:      "text-blue-500 border-blue-400/40",
-  "in-progress": "text-sky-500 border-sky-400/40",
-  resolved:      "text-green-600 border-green-400/40",
+  reported:      "text-slate-500 border-slate-400/40",
+  pending:       "text-amber-600 border-amber-400/40",
+  assigned:      "text-teal-600 border-teal-400/40",
+  "in-progress": "text-violet-600 border-violet-400/40",
+  resolved:      "text-emerald-600 border-emerald-400/40",
 };
 
 function createCategoryIcon(category: IssueCategory) {
@@ -76,14 +80,54 @@ function MapController({ onReady }: { onReady: (m: L.Map) => void }) {
   return null;
 }
 
-const heatZones = [
-  { lat: 13.0598, lng: 80.2478, radius: 2000, color: "#ef4444" },
-  { lat: 13.0418, lng: 80.2341, radius: 1500, color: "#f97316" },
-  { lat: 11.0183, lng: 76.9622, radius: 1800, color: "#f59e0b" },
-  { lat: 9.9195,  lng: 78.1193, radius: 1200, color: "#ef4444" },
-  { lat: 10.7834, lng: 79.1318, radius: 1000, color: "#f59e0b" },
-  { lat: 11.6651, lng: 78.1464, radius: 900,  color: "#fb923c" },
-];
+function AutoLocate() {
+  const map = useMap();
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => map.flyTo([pos.coords.latitude, pos.coords.longitude], 13, { duration: 1.5 }),
+      () => {}, // silently fall back to default center
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
+const TILE_LAYERS = {
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+  },
+  street: {
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+  },
+} as const;
+
+type TileLayerType = keyof typeof TILE_LAYERS;
+
+// ─── Nominatim result shape ───────────────────────────────────────────────────
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+// Generate heatmap zones from complaint data — group by city, count, and color by density
+function buildHeatZones(complaints: MapComplaint[]) {
+  const groups: Record<string, { lat: number; lng: number; count: number }> = {};
+  for (const c of complaints) {
+    const key = `${c.location.lat.toFixed(2)},${c.location.lng.toFixed(2)}`;
+    if (!groups[key]) groups[key] = { lat: c.location.lat, lng: c.location.lng, count: 0 };
+    groups[key].count++;
+  }
+  return Object.values(groups).map((g) => ({
+    lat: g.lat,
+    lng: g.lng,
+    radius: Math.min(800 + g.count * 400, 3000),
+    color: g.count >= 3 ? "#ef4444" : g.count >= 2 ? "#f97316" : "#f59e0b",
+  }));
+}
 
 // ─── Normalised map complaint type ───────────────────────────────────────────
 type MapComplaint = {
@@ -98,21 +142,6 @@ type MapComplaint = {
   location: { lat: number; lng: number; address: string; city: string; district: string };
   statusHistory: { status: string; date: string; note: string }[];
 };
-
-function fromMockComplaint(c: Complaint): MapComplaint {
-  return {
-    id:           c.id,
-    title:        c.title,
-    category:     c.category,
-    status:       c.status,
-    priority:     c.priority,
-    description:  c.description,
-    aiConfidence: c.aiConfidence,
-    upvotes:      c.upvotes,
-    location:     c.location,
-    statusHistory: c.statusHistory,
-  };
-}
 
 function fromApiComplaint(c: ApiComplaint): MapComplaint {
   return {
@@ -130,44 +159,89 @@ function fromApiComplaint(c: ApiComplaint): MapComplaint {
 }
 
 export default function MapView() {
-  const { data: apiData } = useComplaints();
+  const { data: apiData } = useComplaints({ pageSize: "100" });
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<MapComplaint | null>(null);
+  const [tileLayer, setTileLayer] = useState<TileLayerType>("satellite");
   const mapRef = useRef<L.Map | null>(null);
 
-  // Use API data when available, otherwise fall back to mockData
-  const allComplaints: MapComplaint[] = apiData?.data
-    ? apiData.data.map(fromApiComplaint)
-    : mockComplaints.map(fromMockComplaint);
+  const allComplaints: MapComplaint[] = (apiData?.data ?? []).map(fromApiComplaint);
+  const heatZones = useMemo(() => buildHeatZones(allComplaints), [allComplaints]);
 
   const filtered =
     selectedCategory === "all"
       ? allComplaints
       : allComplaints.filter((c) => c.category === selectedCategory);
 
-  const locateMe = () => {
+  // ── Place search state ────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced Nominatim query
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) { setSearchResults([]); setSearchOpen(false); return; }
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=6`,
+          { headers: { "Accept-Language": "en" } },
+        );
+        const data: NominatimResult[] = await res.json();
+        setSearchResults(data);
+        setSearchOpen(data.length > 0);
+      } catch { setSearchResults([]); }
+      finally { setSearchLoading(false); }
+    }, 400);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchQuery]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const flyToResult = (r: NominatimResult) => {
+    mapRef.current?.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 14, { duration: 1.2 });
+    setSearchQuery(r.display_name.split(",")[0]);
+    setSearchOpen(false);
+  };
+
+  const locateMe = useCallback(() => {
     if (!mapRef.current) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => mapRef.current!.flyTo([pos.coords.latitude, pos.coords.longitude], 14),
       () => {},
     );
-  };
+  }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <Navbar />
-      <main className="flex-1 relative" style={{ height: "calc(100vh - 64px)" }}>
+      <main className="flex-1 relative" style={{ minHeight: 0 }}>
         <MapContainer
           center={[10.9, 78.5]}
           zoom={7}
-          style={{ height: "100%", width: "100%", zIndex: 0 }}
+          style={{ position: "absolute", inset: 0, zIndex: 0 }}
           zoomControl={false}
         >
           <MapController onReady={(m) => { mapRef.current = m; }} />
+          <AutoLocate />
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            key={tileLayer}
+            attribution={TILE_LAYERS[tileLayer].attribution}
+            url={TILE_LAYERS[tileLayer].url}
+            maxZoom={tileLayer === "satellite" ? 19 : 20}
           />
 
           {showHeatmap &&
@@ -205,6 +279,50 @@ export default function MapView() {
           ))}
         </MapContainer>
 
+        {/* Search Bar */}
+        <div
+          ref={searchRef}
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] w-96 max-w-[calc(100vw-2rem)]"
+        >
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            {searchLoading && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+            {!searchLoading && searchQuery && (
+              <button
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => { setSearchQuery(""); setSearchResults([]); setSearchOpen(false); }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+              placeholder="Search for a place…"
+              className="w-full pl-9 pr-9 py-2.5 text-sm rounded-xl border border-border bg-card/95 backdrop-blur shadow-lg outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {searchOpen && searchResults.length > 0 && (
+            <div className="mt-1.5 bg-card border border-border rounded-xl shadow-xl overflow-hidden">
+              {searchResults.map((r) => (
+                <button
+                  key={r.place_id}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/60 transition-colors flex items-start gap-2.5"
+                  onClick={() => flyToResult(r)}
+                >
+                  <MapPin className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="line-clamp-2 leading-snug">{r.display_name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Filter Panel */}
         <div className="absolute top-4 left-4 z-[400] w-72 max-w-[calc(100vw-2rem)]">
           <div className="bg-card/95 backdrop-blur border border-border rounded-xl p-4 shadow-lg">
@@ -230,7 +348,28 @@ export default function MapView() {
               </SelectContent>
             </Select>
 
-            <div className="mt-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                variant={tileLayer === "satellite" ? "default" : "outline"}
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setTileLayer("satellite")}
+              >
+                <Satellite className="h-3.5 w-3.5" />
+                Satellite
+              </Button>
+              <Button
+                variant={tileLayer === "street" ? "default" : "outline"}
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setTileLayer("street")}
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                Street
+              </Button>
+            </div>
+
+            <div className="mt-2">
               <Button
                 variant={showHeatmap ? "default" : "outline"}
                 size="sm"

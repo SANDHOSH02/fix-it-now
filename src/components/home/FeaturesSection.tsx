@@ -46,7 +46,7 @@ export function FeaturesSection() {
       <div className="container">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-accent/10 text-accent text-sm font-medium mb-4">
+          <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
             Powerful Features
           </span>
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -65,8 +65,8 @@ export function FeaturesSection() {
               className="card-civic-hover group"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="h-12 w-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent group-hover:scale-110 transition-all duration-200">
-                <feature.icon className="h-6 w-6 text-accent group-hover:text-accent-foreground" />
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:scale-110 transition-all duration-200">
+                <feature.icon className="h-6 w-6 text-primary group-hover:text-primary-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">

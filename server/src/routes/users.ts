@@ -91,8 +91,9 @@ router.patch(
     if (!validationResult(req).isEmpty()) return next(createError("Invalid ID", 400));
     try {
       const { sub } = (req as AuthenticatedRequest).user;
+      const id = req.params.id as string;
       await prisma.notification.updateMany({
-        where: { id: req.params.id, userId: sub },
+        where: { id, userId: sub },
         data: { isRead: true },
       });
       res.json({ success: true, data: { message: "Marked as read" } });

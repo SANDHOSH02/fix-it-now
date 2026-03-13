@@ -24,8 +24,9 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
 router.get("/:id", param("id").isUUID(), async (req: Request, res: Response, next: NextFunction) => {
   if (!validationResult(req).isEmpty()) return next(createError("Invalid ID", 400));
   try {
+    const id = req.params.id as string;
     const dept = await prisma.department.findUnique({
-      where: { id: req.params.id },
+      where: { id },
       include: { _count: { select: { complaints: true } } },
     });
     if (!dept) return next(createError("Department not found", 404));

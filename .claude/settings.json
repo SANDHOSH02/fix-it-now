@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Read(//c/Users/SandhoshGowravan/Downloads/**)",
+      "Read(//c/Users/SandhoshGowravan/Desktop/fix-it-now/src/components/**)"
+    ]
+  }
+}

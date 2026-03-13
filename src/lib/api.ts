@@ -199,3 +199,38 @@ export const adminApi = {
     return apiFetch<ApiListResponse<ApiUser>>(`/admin/users${qs}`);
   },
 };
+
+// Users / Profile
+export interface ApiNotification {
+  id: string; title: string; body: string; isRead: boolean; type: string; refId?: string; createdAt: string;
+}
+
+export const usersApi = {
+  getProfile: () => apiFetch<ApiSingleResponse<ApiUser>>("/users/me"),
+
+  updateProfile: (body: { name?: string; phone?: string; district?: string }) =>
+    apiFetch<ApiSingleResponse<ApiUser>>("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  getNotifications: () =>
+    apiFetch<ApiSingleResponse<ApiNotification[]>>("/users/me/notifications"),
+
+  markNotificationRead: (id: string) =>
+    apiFetch<ApiSingleResponse<{ message: string }>>(`/users/me/notifications/${id}/read`, {
+      method: "PATCH",
+    }),
+};
+
+// Chat (Ollama)
+export interface ChatMessage { role: "user" | "assistant"; content: string }
+
+export const chatApi = {
+  send: (messages: ChatMessage[]) =>
+    apiFetch<ApiSingleResponse<{ message: string }>>("/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages }),
+      auth: false,
+    }),
+};

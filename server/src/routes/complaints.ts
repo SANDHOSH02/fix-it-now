@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { body, query, param, validationResult } from "express-validator";
 import prisma from "../lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { createError } from "../middleware/errorHandler";
 import { AuthenticatedRequest, ComplaintsFilter } from "../types";
@@ -40,7 +41,7 @@ router.get(
       const filter = req.query as ComplaintsFilter;
       const { page, pageSize, skip } = parsePagination(filter);
 
-      const where: Parameters<typeof prisma.complaint.findMany>[0]["where"] = {};
+      const where: Prisma.ComplaintWhereInput = {};
 
       if (filter.status)     where.status     = filter.status as ComplaintStatus;
       if (filter.category)   where.category   = filter.category as ComplaintCategory;
@@ -96,9 +97,10 @@ router.get(
 router.get("/:id", param("id").isUUID(), async (req: Request, res: Response, next: NextFunction) => {
   if (!validationResult(req).isEmpty()) return next(createError("Invalid complaint ID", 400));
 
-  try {
+    try {
+    const id = req.params.id as string;
     const complaint = await prisma.complaint.findUnique({
-      where: { id: req.params.id },
+      where: { id },
       include: {
         reporter:   { select: { id: true, name: true, email: true } },
         department: { select: { id: true, name: true } },
@@ -224,14 +226,15 @@ router.patch(
       const { sub, role } = (req as AuthenticatedRequest).user;
       const { status, note } = req.body as { status: ComplaintStatus; note?: string };
 
-      const complaint = await prisma.complaint.findUnique({ where: { id: req.params.id } });
+      const id = req.params.id as string;
+      const complaint = await prisma.complaint.findUnique({ where: { id } });
       if (!complaint) return next(createError("Complaint not found", 404));
       if (role === "CITIZEN" && complaint.reporterId !== sub) {
         return next(createError("Forbidden", 403));
       }
 
       const updated = await prisma.complaint.update({
-        where: { id: req.params.id },
+        where: { id: id as string },
         data: {
           status,
           statusHistory: {
@@ -265,15 +268,16 @@ router.patch(
       const { sub } = (req as AuthenticatedRequest).user;
       const { departmentId } = req.body as { departmentId: string };
 
-      const [dept, complaint] = await Promise.all([
+        const id = req.params.id as string;
+        const [dept, complaint] = await Promise.all([
         prisma.department.findUnique({ where: { id: departmentId } }),
-        prisma.complaint.findUnique({ where: { id: req.params.id } }),
+        prisma.complaint.findUnique({ where: { id } }),
       ]);
       if (!dept)      return next(createError("Department not found", 404));
       if (!complaint) return next(createError("Complaint not found", 404));
 
       const updated = await prisma.complaint.update({
-        where: { id: req.params.id },
+        where: { id: id as string },
         data: {
           departmentId,
           status: ComplaintStatus.assigned,
@@ -307,7 +311,7 @@ router.post(
     if (!validationResult(req).isEmpty()) return next(createError("Invalid complaint ID", 400));
     try {
       const updated = await prisma.complaint.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data: { upvotes: { increment: 1 } },
         select: { id: true, upvotes: true },
       });
@@ -329,7 +333,7 @@ router.delete(
 
     try {
       const { sub, role } = (req as AuthenticatedRequest).user;
-      const complaint = await prisma.complaint.findUnique({ where: { id: req.params.id } });
+      const complaint = await prisma.complaint.findUnique({ where: { id: req.params.id as string } });
       if (!complaint) return next(createError("Complaint not found", 404));
 
       const canDelete =
@@ -339,7 +343,7 @@ router.delete(
 
       if (!canDelete) return next(createError("Cannot delete this complaint", 403));
 
-      await prisma.complaint.delete({ where: { id: req.params.id } });
+      await prisma.complaint.delete({ where: { id: req.params.id as string } });
       res.json({ success: true, data: { message: "Complaint deleted" } });
     } catch (err) {
       next(err);

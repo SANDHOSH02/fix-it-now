@@ -26,10 +26,7 @@ export default function Login() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? "/dashboard";
 
-  // Already logged in → redirect
-  useEffect(() => {
-    if (isAuthenticated) navigate(from, { replace: true });
-  }, [isAuthenticated, navigate, from]);
+  // Removed auto-redirect for authenticated users to always show login page
 
   const {
     register,

@@ -57,7 +57,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useComplaints, useUpdateComplaintStatus, useAssignDepartment } from "@/hooks/useComplaints";
 import { useDepartments } from "@/hooks/useDepartments";
-import { complaints as mockComplaints, departments as mockDepts } from "@/lib/mockData";
 import type { ApiComplaint } from "@/lib/api";
 
 // ─── Normalised complaint shape ───────────────────────────────────────────────
@@ -99,60 +98,35 @@ function fromApi(c: ApiComplaint): AdminComplaint {
   };
 }
 
-function fromMock(c: typeof mockComplaints[0]): AdminComplaint {
-  return {
-    _apiId:       c.id,
-    id:           c.id,
-    title:        c.title,
-    category:     c.category,
-    status:       c.status,
-    priority:     c.priority,
-    city:         c.location.city,
-    district:     c.location.district,
-    reporterName: c.reporter.name,
-    aiConfidence: c.aiConfidence,
-    department:   c.department ?? null,
-    isDuplicate:  c.isDuplicate,
-    upvotes:      c.upvotes,
-    date:         c.date,
-    description:  c.description,
-  };
-}
-
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 const priorityCls: Record<string, string> = {
-  high:   "bg-red-100 text-red-700",
-  medium: "bg-yellow-100 text-yellow-700",
-  low:    "bg-green-100 text-green-700",
+  high:   "bg-rose-100 text-rose-700",
+  medium: "bg-amber-100 text-amber-700",
+  low:    "bg-emerald-100 text-emerald-700",
 };
 const statusCls: Record<string, string> = {
-  reported:      "bg-gray-100 text-gray-600",
-  pending:       "bg-yellow-100 text-yellow-700",
-  assigned:      "bg-blue-100 text-blue-700",
-  "in-progress": "bg-sky-100 text-sky-700",
-  resolved:      "bg-green-100 text-green-700",
+  reported:      "bg-slate-100 text-slate-600",
+  pending:       "bg-amber-100 text-amber-700",
+  assigned:      "bg-teal-100 text-teal-700",
+  "in-progress": "bg-violet-100 text-violet-700",
+  resolved:      "bg-emerald-100 text-emerald-700",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   // ── API hooks ──
-  const { data: complaintsData } = useComplaints();
+  const { data: complaintsData } = useComplaints({ pageSize: "100" });
   const { data: deptsData }      = useDepartments();
   const updateStatus             = useUpdateComplaintStatus();
   const assignDept               = useAssignDepartment();
 
-  // ── Data source: API when available, mockData otherwise ──
   const baseComplaints: AdminComplaint[] = useMemo(
-    () => complaintsData?.data
-      ? complaintsData.data.map(fromApi)
-      : mockComplaints.map(fromMock),
+    () => (complaintsData?.data ?? []).map(fromApi),
     [complaintsData],
   );
 
   const deptList: string[] = useMemo(
-    () => deptsData?.data
-      ? deptsData.data.map((d) => d.name)
-      : mockDepts,
+    () => (deptsData?.data ?? []).map((d) => d.name),
     [deptsData],
   );
 
@@ -215,14 +189,14 @@ export default function AdminDashboard() {
   const totalComplaints = allComplaints.length;
   const pendingReview   = allComplaints.filter((c) => c.status === "pending" || c.status === "reported").length;
   const resolved        = allComplaints.filter((c) => c.status === "resolved").length;
-  const activeCitizens  = new Set(mockComplaints.map((c) => c.reporter.userId)).size;
+  const activeCitizens  = new Set(allComplaints.map((c) => c.reporterName)).size;
   const avgAiScore      = Math.round(allComplaints.reduce((a, c) => a + c.aiConfidence, 0) / (allComplaints.length || 1));
 
   const adminStats = [
-    { label: "Total Complaints", value: totalComplaints, icon: AlertTriangle, change: "+5",  color: "text-primary" },
-    { label: "Pending Review",   value: pendingReview,   icon: Clock,         change: "+3",  color: "text-yellow-600" },
-    { label: "Resolved",         value: resolved,        icon: CheckCircle2,  change: "+2",  color: "text-green-600" },
-    { label: "Active Citizens",  value: activeCitizens,  icon: Users,         change: `+${activeCitizens}`, color: "text-sky-600" },
+    { label: "Total Complaints", value: totalComplaints, icon: AlertTriangle, change: "+0",  color: "text-primary" },
+    { label: "Pending Review",   value: pendingReview,   icon: Clock,         change: "+0",  color: "text-amber-600" },
+    { label: "Resolved",         value: resolved,        icon: CheckCircle2,  change: "+0",  color: "text-emerald-600" },
+    { label: "Active Citizens",  value: activeCitizens,  icon: Users,         change: "+0",  color: "text-teal-600" },
   ];
 
   // ── Chart data ──
@@ -236,11 +210,11 @@ export default function AdminDashboard() {
     { name: "Other",    count: catCount("other") },
   ];
   const pieData = [
-    { name: "Resolved",    value: allComplaints.filter((c) => c.status === "resolved").length,    color: "#22c55e" },
-    { name: "In Progress", value: allComplaints.filter((c) => c.status === "in-progress").length, color: "#0ea5e9" },
-    { name: "Assigned",    value: allComplaints.filter((c) => c.status === "assigned").length,    color: "#3b82f6" },
+    { name: "Resolved",    value: allComplaints.filter((c) => c.status === "resolved").length,    color: "#10b981" },
+    { name: "In Progress", value: allComplaints.filter((c) => c.status === "in-progress").length, color: "#7c3aed" },
+    { name: "Assigned",    value: allComplaints.filter((c) => c.status === "assigned").length,    color: "#0d9488" },
     { name: "Pending",     value: allComplaints.filter((c) => c.status === "pending").length,     color: "#f59e0b" },
-    { name: "Reported",    value: allComplaints.filter((c) => c.status === "reported").length,    color: "#9ca3af" },
+    { name: "Reported",    value: allComplaints.filter((c) => c.status === "reported").length,    color: "#64748b" },
   ];
   const cityCount: Record<string, number> = {};
   allComplaints.forEach((c) => { cityCount[c.city] = (cityCount[c.city] ?? 0) + 1; });

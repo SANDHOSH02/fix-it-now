@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ralph-loop:ralph-loop)",
+      "Bash(cd /c/Users/SandhoshGowravan/Desktop/fix-it-now && bash ralph/ralph.sh 3 2>&1)",
+      "Bash(head:*)",
+      "Bash(cd /c/Users/SandhoshGowravan/Desktop/fix-it-now && npx eslint src/pages/AdminDashboard.tsx src/pages/UserDashboard.tsx src/pages/ReportIssue.tsx 2>&1)",
+      "Bash(cd:*)",
+      "Bash(cd /c/Users/SandhoshGowravan/Desktop/fix-it-now && npx tsc --noEmit 2>&1)",
+      "Bash(cd /c/Users/SandhoshGowravan/Desktop/fix-it-now && npx eslint src/pages/Index.tsx src/components/layout/Navbar.tsx src/components/layout/Footer.tsx src/pages/AdminDashboard.tsx 2>&1)",
+      "Bash(tail:*)",
+      "Bash(cd /c/Users/SandhoshGowravan/Desktop/fix-it-now && bash ralph/ralph.sh 2>&1)",
+      "Bash(grep:*)",
+      "Bash(cd /c/Users/SandhoshGowravan/Desktop/fix-it-now && npx vitest run 2>&1)",
+      "Bash(echo TS OK:*)",
+      "Bash(cd /c/Users/SandhoshGowravan/Desktop/fix-it-now && npx eslint src --ext .ts,.tsx --max-warnings 0 2>&1)",
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)",
+      "Bash(npm run:*)",
+      "Bash(psql:*)",
+      "Bash(curl -s http://localhost:4000/api/v1/health)",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"sant@example.com\"\",\"\"password\"\":\"\"test1234\"\"}')",
+      "Read(//c/Users/SandhoshGowravan/Desktop/fix-it-now/server/**)",
+      "Bash(npx prisma:*)",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/register -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"Sant\"\",\"\"email\"\":\"\"sant@example.com\"\",\"\"password\"\":\"\"Test1234\"\",\"\"district\"\":\"\"Chennai\"\"}')",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"sant@example.com\"\",\"\"password\"\":\"\"Test1234\"\"}')",
+      "Bash(curl -s -X POST http://localhost:4000/api/v1/auth/register -H \"Content-Type: application/json\" -H \"Origin: http://localhost:5173\" -d '{\"\"name\"\":\"\"santhosh\"\",\"\"email\"\":\"\"sandhosh.intern@promon.co.in\"\",\"\"password\"\":\"\"Test1234\"\",\"\"district\"\":\"\"Madurai\"\"}')",
+      "Bash(curl -s -I -X OPTIONS http://localhost:4000/api/v1/auth/register -H \"Origin: http://localhost:5173\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: Content-Type\")",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:8080)",
+      "Bash(netstat -ano)",
+      "Skill(ralph-loop:cancel-ralph)",
+      "Skill(ralph-loop:cancel-ralph:*)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(rm -f node_modules/.prisma/client/query_engine-windows.dll.node)",
+      "Bash(curl -s http://localhost:4000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"admin@fixitnow.gov.in\"\",\"\"password\"\":\"\"password123\"\"}')",
+      "Bash(curl -s -v http://localhost:4000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@fixitnow.gov.in\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"password123\"\"\"\"}')",
+      "Bash(PGPASSWORD=1234 psql -U postgres -d \"Fix-It\" -c \"\\\\dt\")",
+      "Bash(PGPASSWORD=1234 psql -U postgres -d \"Fix-It\" -c \"\\\\d users\")"
+    ]
+  }
+}

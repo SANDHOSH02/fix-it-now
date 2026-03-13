@@ -4,6 +4,7 @@ import complaintsRoutes  from "./complaints";
 import usersRoutes       from "./users";
 import departmentsRoutes from "./departments";
 import adminRoutes       from "./admin";
+import chatRoutes        from "./chat";
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use("/complaints",  complaintsRoutes);
 router.use("/users",       usersRoutes);
 router.use("/departments", departmentsRoutes);
 router.use("/admin",       adminRoutes);
+router.use("/chat",        chatRoutes);
 
 export default router;
