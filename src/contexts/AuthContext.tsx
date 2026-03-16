@@ -2,11 +2,11 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
   type ReactNode,
 } from "react";
-import { authApi, tokenStore, type ApiUser } from "@/lib/api";
+import { STATIC_USER } from "@/lib/static-data";
+import type { ApiUser } from "@/lib/api";
 
 interface AuthState {
   user: ApiUser | null;
@@ -24,47 +24,19 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]         = useState<ApiUser | null>(null);
-  const [isLoading, setLoading] = useState(true);
+  // Always logged in with static user (DB offline)
+  const [user] = useState<ApiUser | null>(STATIC_USER);
 
-  // On mount: if we have a stored token, fetch the current user
-  useEffect(() => {
-    const token = tokenStore.getAccess();
-    if (!token) { setLoading(false); return; }
-
-    authApi.me()
-      .then((res) => setUser(res.data))
-      .catch(() => tokenStore.clearTokens())
-      .finally(() => setLoading(false));
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await authApi.login({ email, password });
-    tokenStore.setTokens(res.data.accessToken, res.data.refreshToken);
-    setUser(res.data.user);
-  }, []);
-
-  const register = useCallback(
-    async (name: string, email: string, password: string, district?: string) => {
-      const res = await authApi.register({ name, email, password, district });
-      tokenStore.setTokens(res.data.accessToken, res.data.refreshToken);
-      setUser(res.data.user);
-    },
-    [],
-  );
-
-  const logout = useCallback(async () => {
-    try { await authApi.logout(); } catch { /* ignore */ }
-    tokenStore.clearTokens();
-    setUser(null);
-  }, []);
+  const login = useCallback(async () => { /* no-op */ }, []);
+  const register = useCallback(async () => { /* no-op */ }, []);
+  const logout = useCallback(async () => { /* no-op */ }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isLoading,
-        isAuthenticated: !!user,
+        isLoading: false,
+        isAuthenticated: true,
         isAdmin: user?.role === "ADMIN" || user?.role === "SUPER_ADMIN",
         login,
         register,

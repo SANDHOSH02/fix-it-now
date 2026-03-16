@@ -15,6 +15,7 @@ import { useLogoutMutation } from "@/hooks/useAuth";
 const navLinks = [
   { name: "Home", path: "/" },
   { name: "Report Issue", path: "/report" },
+  { name: "How It Works", path: "/how-it-works" },
   { name: "Dashboard", path: "/dashboard" },
   { name: "Map", path: "/map" },
 ];
@@ -113,11 +114,7 @@ export function Navbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <Button size="sm" asChild className="gap-2 hidden md:inline-flex">
-              <Link to="/login"><LogIn className="h-4 w-4" /> Sign In</Link>
-            </Button>
-          )}
+          ) : null}
 
           {/* Mobile Menu Button */}
           <Button

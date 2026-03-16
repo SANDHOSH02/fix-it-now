@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { usersApi, type ApiNotification } from "@/lib/api";
+import { STATIC_NOTIFICATIONS } from "@/lib/static-data";
+import type { ApiNotification } from "@/lib/api";
 
 export default function Notifications() {
   const navigate = useNavigate();
@@ -12,11 +13,15 @@ export default function Notifications() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
-    queryFn: usersApi.getNotifications,
+    queryFn: async () => ({ success: true as const, data: STATIC_NOTIFICATIONS }),
   });
 
   const markRead = useMutation({
-    mutationFn: (id: string) => usersApi.markNotificationRead(id),
+    mutationFn: async (id: string) => {
+      const n = STATIC_NOTIFICATIONS.find((x) => x.id === id);
+      if (n) n.isRead = true;
+      return { success: true as const, data: { message: "ok" } };
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 

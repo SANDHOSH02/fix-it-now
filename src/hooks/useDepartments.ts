@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { departmentsApi } from "@/lib/api";
+import { STATIC_DEPARTMENTS } from "@/lib/static-data";
 
 export function useDepartments() {
   return useQuery({
     queryKey: ["departments"],
-    queryFn:  departmentsApi.list,
-    staleTime: 5 * 60 * 1000, // departments rarely change
+    queryFn: async () => ({ success: true as const, data: STATIC_DEPARTMENTS }),
+    staleTime: 5 * 60 * 1000,
   });
 }

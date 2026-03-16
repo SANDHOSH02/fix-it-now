@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import MapView from "./pages/MapView";
+import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -36,15 +37,16 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/report" element={<ProtectedRoute><ReportIssue /></ProtectedRoute>} />
+          <Route path="/login" element={<Index />} />
+          <Route path="/register" element={<Index />} />
+          <Route path="/report" element={<ReportIssue />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/map" element={<MapView />} />
-          <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/dashboard/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/dashboard/profile" element={<Profile />} />
+          <Route path="/dashboard/settings" element={<Settings />} />
+          <Route path="/dashboard/notifications" element={<Notifications />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
